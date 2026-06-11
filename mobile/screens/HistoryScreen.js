@@ -4,7 +4,6 @@ import {
   Text,
   View,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
   Image,
   Animated,
@@ -15,6 +14,7 @@ import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SHADOW, SHADOW_SOFT } from '../theme';
 
@@ -58,8 +58,11 @@ function HistoryCard(props) {
       ]}
     >
       <View style={styles.photoContainer}>
-        {item.photoUri ? (
-          <Image source={{ uri: item.photoUri }} style={styles.photo} />
+        {(item.photoFileName || item.photoUri) ? (
+          <Image
+            source={{ uri: item.photoFileName ? FileSystem.documentDirectory + item.photoFileName : item.photoUri }}
+            style={styles.photo}
+          />
         ) : (
           <View style={styles.noPhoto}>
             <Text style={styles.noPhotoEmoji}>📷</Text>
@@ -165,13 +168,23 @@ export default function HistoryScreen(props) {
     }
   }, []);
 
+  // Kayıtla birlikte fotoğraf dosyasını da diskten sil (öksüz dosya birikmesin)
+  var deletePhotoFile = function (item) {
+    if (item && item.photoFileName) {
+      FileSystem.deleteAsync(FileSystem.documentDirectory + item.photoFileName, { idempotent: true })
+        .catch(function () {});
+    }
+  };
+
   var deleteItem = function (id) {
-    Alert.alert('Sil', 'Bu yemegi gecmisten silmek istiyor musun?', [
-      { text: 'Iptal', style: 'cancel' },
+    Alert.alert('Sil', 'Bu yemeği geçmişten silmek istiyor musun?', [
+      { text: 'İptal', style: 'cancel' },
       {
         text: 'Sil',
         style: 'destructive',
         onPress: async function () {
+          var removed = history.find(function (item) { return item.id === id; });
+          deletePhotoFile(removed);
           var updated = history.filter(function (item) {
             return item.id !== id;
           });
@@ -187,14 +200,15 @@ export default function HistoryScreen(props) {
 
   var clearAll = function () {
     Alert.alert(
-      'Tumunu Sil',
-      'Tum yemek gecmisini silmek istiyor musun? Bu islem geri alinamaz.',
+      'Tümünü Sil',
+      'Tüm yemek geçmişini silmek istiyor musun? Bu işlem geri alınamaz.',
       [
-        { text: 'Iptal', style: 'cancel' },
+        { text: 'İptal', style: 'cancel' },
         {
-          text: 'Tumunu Sil',
+          text: 'Tümünü Sil',
           style: 'destructive',
           onPress: async function () {
+            history.forEach(deletePhotoFile);
             setHistory([]);
             await AsyncStorage.removeItem('cookingHistory');
           },
@@ -204,7 +218,7 @@ export default function HistoryScreen(props) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar style="light" />
 
       <LinearGradient
@@ -240,16 +254,16 @@ export default function HistoryScreen(props) {
             {history.length > 0 ? (
               <TouchableOpacity onPress={clearAll} style={styles.clearButton}>
                 <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
-                <Text style={styles.clearText}>Tumunu Sil</Text>
+                <Text style={styles.clearText}>Tümünü Sil</Text>
               </TouchableOpacity>
             ) : null}
           </View>
 
-          <Text style={styles.headerTitle}>📖 Yemek Gecmisim</Text>
+          <Text style={styles.headerTitle}>📖 Yemek Geçmişim</Text>
           <Text style={styles.headerSubtitle}>
             {history.length > 0
-              ? history.length + ' yemek yaptin!'
-              : 'Henuz yemek yapmadin'}
+              ? history.length + ' yemek yaptın!'
+              : 'Henüz yemek yapmadın'}
           </Text>
         </Animated.View>
       </LinearGradient>
@@ -262,14 +276,14 @@ export default function HistoryScreen(props) {
         {loading ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyEmoji}>⏳</Text>
-            <Text style={styles.emptyTitle}>Yukleniyor...</Text>
+            <Text style={styles.emptyTitle}>Yükleniyor...</Text>
           </View>
         ) : history.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyEmoji}>🍽️</Text>
-            <Text style={styles.emptyTitle}>Henuz yemek gecmisin yok</Text>
+            <Text style={styles.emptyTitle}>Henüz yemek geçmişin yok</Text>
             <Text style={styles.emptySubtitle}>
-              Ilk yemegini yap ve burada gorsun!
+              İlk yemeğini yap ve burada görsün!
             </Text>
             <TouchableOpacity
               style={styles.emptyButton}
@@ -277,7 +291,7 @@ export default function HistoryScreen(props) {
                 navigation.goBack();
               }}
             >
-              <Text style={styles.emptyButtonText}>Yemek Yapmaya Basla</Text>
+              <Text style={styles.emptyButtonText}>Yemek Yapmaya Başla</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -297,7 +311,7 @@ export default function HistoryScreen(props) {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

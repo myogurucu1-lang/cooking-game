@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  StyleSheet, Text, View, ScrollView, SafeAreaView,
-  TouchableOpacity, Animated, Dimensions, Vibration,
+  StyleSheet, Text, View, ScrollView,
+  TouchableOpacity, Animated, Dimensions, Vibration, Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -34,7 +34,10 @@ function StepCard(props) {
   }, []);
 
   var stepNumber = step.step || index + 1;
-  var instruction = step.instruction || step;
+  // AI'dan instruction string gelmezse asla obje render etme (crash koruması)
+  var instruction = typeof step === 'string'
+    ? step
+    : (step && typeof step.instruction === 'string' ? step.instruction : '');
   var duration = step.duration || null;
   var heat = step.heat || null;
 
@@ -240,6 +243,24 @@ export default function CookScreen(props) {
     };
   }, []);
 
+  // Oyun ortasında çıkışta onay iste (Android donanım geri tuşu dahil).
+  // "Yemeği Bitir" navigation.replace kullanır (REPLACE) — ona karışma.
+  useEffect(function () {
+    var unsubscribe = navigation.addListener('beforeRemove', function (e) {
+      if (e.data.action.type === 'REPLACE') return;
+      e.preventDefault();
+      Alert.alert(
+        'Oyundan çıkılsın mı?',
+        'Tarif ve ilerlemen kaybolacak.',
+        [
+          { text: 'Kal', style: 'cancel' },
+          { text: 'Çık', style: 'destructive', onPress: function () { navigation.dispatch(e.data.action); } },
+        ]
+      );
+    });
+    return unsubscribe;
+  }, [navigation]);
+
   var toggleStep = function (index) {
     var wasCompleted = completedSteps.includes(index);
 
@@ -294,7 +315,7 @@ export default function CookScreen(props) {
 
   return (
     <View style={styles.container} ref={rootRef}>
-      <SafeAreaView style={styles.safeArea}>
+      <View style={styles.safeArea}>
       <StatusBar style="light" />
 
       <LinearGradient colors={[COLORS.primary, COLORS.primaryDark]} style={[styles.header, { paddingTop: 12 + insets.top }]}>
@@ -404,8 +425,20 @@ export default function CookScreen(props) {
               );
             })}
           </View>
+
+          {steps.length === 0 ? (
+            <View style={styles.emptySteps}>
+              <Text style={styles.emptyStepsEmoji}>🤔</Text>
+              <Text style={styles.emptyStepsTitle}>Tarif adımları yüklenemedi</Text>
+              <Text style={styles.emptyStepsText}>Geri dönüp yeni bir tarif oluşturabilirsin.</Text>
+              <TouchableOpacity style={styles.emptyStepsBtn} onPress={function () { navigation.goBack(); }} activeOpacity={0.8}>
+                <Text style={styles.emptyStepsBtnText}>Geri Dön</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
         </View>
 
+        {steps.length > 0 ? (
         <TouchableOpacity
           style={[styles.finishButton, !allDone && styles.finishButtonDisabled]}
           onPress={finishGame}
@@ -422,10 +455,11 @@ export default function CookScreen(props) {
             </Text>
           </LinearGradient>
         </TouchableOpacity>
+        ) : null}
 
         <View style={{ height: 40 }} />
       </ScrollView>
-      </SafeAreaView>
+      </View>
 
       {/* Spotlight Tutorial - SafeAreaView DIŞINDA: top:0 == ekran tepesi olsun ki
           measureInWindow koordinatlarıyla iki platformda da birebir hizalansın */}
@@ -535,4 +569,11 @@ var styles = StyleSheet.create({
   taskAlertTitle: { fontSize: 15, fontWeight: '900', color: '#FFFFFF', marginBottom: 2 },
   taskAlertDesc: { fontSize: 12, lineHeight: 17, color: 'rgba(255,255,255,0.9)', fontWeight: '600' },
   taskAlertClose: { padding: 2 },
+
+  emptySteps: { alignItems: 'center', padding: 32, backgroundColor: COLORS.white, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border },
+  emptyStepsEmoji: { fontSize: 44, marginBottom: 10 },
+  emptyStepsTitle: { fontSize: 17, fontWeight: '800', color: COLORS.text, marginBottom: 6 },
+  emptyStepsText: { fontSize: 13, color: COLORS.textMuted, textAlign: 'center', marginBottom: 16 },
+  emptyStepsBtn: { backgroundColor: COLORS.primary, paddingHorizontal: 28, paddingVertical: 12, borderRadius: 14 },
+  emptyStepsBtnText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
 });

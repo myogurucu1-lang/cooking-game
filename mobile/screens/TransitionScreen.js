@@ -3,7 +3,7 @@ import {
   StyleSheet, Text, View, SafeAreaView, Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BACKEND_URL } from '../config';
+import { BACKEND_URL, APP_SECRET } from '../config';
 import ChaseAnimation from '../components/ChaseAnimation';
 
 var LOADING_MESSAGES = [
@@ -40,16 +40,19 @@ export default function TransitionScreen(props) {
   useEffect(function () {
     var isMounted = true;
 
+    // AbortController: timeout'ta isteği gerçekten iptal et (arka planda sürmesin)
     var fetchWithTimeout = function (url, options, timeout) {
-      if (!timeout) timeout = 25000;
-      return Promise.race([
-        fetch(url, options),
-        new Promise(function (_, reject) {
-          setTimeout(function () {
-            reject(new Error('Sunucuya bağlanma süresi doldu (timeout).'));
-          }, timeout);
-        }),
-      ]);
+      if (!timeout) timeout = 35000;
+      var controller = new AbortController();
+      var timer = setTimeout(function () { controller.abort(); }, timeout);
+      return fetch(url, Object.assign({}, options, { signal: controller.signal }))
+        .finally(function () { clearTimeout(timer); })
+        .catch(function (err) {
+          if (err && err.name === 'AbortError') {
+            throw new Error('Bağlantı zaman aşımına uğradı.');
+          }
+          throw err;
+        });
     };
 
     // Aynı malzeme + zorluk kombinasyonu için ortak anahtar üret
@@ -151,7 +154,7 @@ export default function TransitionScreen(props) {
 
         var response = await fetchWithTimeout(BACKEND_URL + '/api/recipe', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-app-key': APP_SECRET },
           body: JSON.stringify({
             ingredients: ingredients,
             difficulty: difficulty,
@@ -164,12 +167,12 @@ export default function TransitionScreen(props) {
           }),
         }, 35000);
 
-        var data = await response.json();
-
-        console.log('📦 Backend data:', JSON.stringify(data).substring(0, 500));
-        console.log('📋 ChallengerTasks:', data.challengerTasks ? data.challengerTasks.length : 'YOK');
-        console.log('🍳 Recipe:', data.recipe ? data.recipe.name : 'YOK');
-        console.log('🔢 Deneme:', attemptNumber);
+        var data = null;
+        try {
+          data = await response.json();
+        } catch (parseErr) {
+          throw new Error('Sunucudan beklenmeyen yanıt geldi.');
+        }
 
         if (!response.ok || (data && data.error)) {
           throw new Error((data && data.error) || 'Tarif oluşturulamadı');
@@ -195,8 +198,13 @@ export default function TransitionScreen(props) {
       } catch (error) {
         if (!isMounted) return;
         console.log('❌ Fetch hatası:', error.message);
-        Alert.alert('Hata', error.message + '\n\nLütfen backend sunucusunun çalıştığından ve mobil cihazın aynı ağda olduğundan emin olun.', [
-          { text: 'Geri Dön', onPress: function () { navigation.goBack(); } },
+        var friendly = error.message || '';
+        if (!friendly || friendly.indexOf('Network request failed') !== -1) {
+          friendly = 'Sunucuya ulaşılamadı.';
+        }
+        Alert.alert('Bağlantı Sorunu', friendly + '\n\nİnternet bağlantını kontrol edip tekrar deneyebilirsin.', [
+          { text: 'Geri Dön', style: 'cancel', onPress: function () { navigation.goBack(); } },
+          { text: 'Tekrar Dene', onPress: function () { fetchRecipe(); } },
         ]);
       }
     };

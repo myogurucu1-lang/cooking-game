@@ -4,7 +4,6 @@ import {
   Text,
   View,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
   Animated,
   Dimensions,
@@ -34,9 +33,13 @@ function ConfettiPiece(props) {
   var opacityAnim = useRef(new Animated.Value(1)).current;
   var swayAnim = useRef(new Animated.Value(0)).current;
 
-  var colors = ['#FFD93D', '#FF6B35', '#4ECDC4', '#E74C3C', '#9B59B6', '#3498DB', '#2ECC71'];
-  var color = colors[Math.floor(Math.random() * colors.length)];
-  var size = 8 + Math.random() * 8;
+  // Renk/boyut sabit kalsın: render gövdesinde random olursa her re-render'da konfeti değişir
+  var pieceStyle = useRef({
+    color: ['#FFD93D', '#FF6B35', '#4ECDC4', '#E74C3C', '#9B59B6', '#3498DB', '#2ECC71'][Math.floor(Math.random() * 7)],
+    size: 8 + Math.random() * 8,
+  }).current;
+  var color = pieceStyle.color;
+  var size = pieceStyle.size;
 
   useEffect(function () {
     var timeout = setTimeout(function () {
@@ -44,11 +47,13 @@ function ConfettiPiece(props) {
         Animated.timing(fallAnim, { toValue: 800, duration: 3000 + Math.random() * 2000, useNativeDriver: true }),
         Animated.timing(rotateAnim, { toValue: 10, duration: 3000 + Math.random() * 2000, useNativeDriver: true }),
         Animated.timing(opacityAnim, { toValue: 0, duration: 3000 + Math.random() * 2000, delay: 1500, useNativeDriver: true }),
+        // Sınırlı iterasyon: görünmez parçalar sonsuza dek anime olmasın (ekran açık kaldıkça CPU yemesin)
         Animated.loop(
           Animated.sequence([
             Animated.timing(swayAnim, { toValue: 30, duration: 500, useNativeDriver: true }),
             Animated.timing(swayAnim, { toValue: -30, duration: 500, useNativeDriver: true }),
-          ])
+          ]),
+          { iterations: 6 }
         ),
       ]).start();
     }, delay);
@@ -187,9 +192,10 @@ export default function ResultScreen(props) {
   var photoUri = photoUriState[0];
   var setPhotoUri = photoUriState[1];
 
-  var historyIdState = useState(null);
-  var historyId = historyIdState[0];
-  var setHistoryId = historyIdState[1];
+  // Kayıt kimliği senkron üretilir: kullanıcı kayıt tamamlanmadan yıldıza bassa bile
+  // sonraki güncellemeler aynı id üzerinden geçmişi bulur
+  var historyIdRef = useRef(Date.now().toString());
+  var historyId = historyIdRef.current;
 
   var cameraRef = useRef(null);
   var titleAnim = useRef(new Animated.Value(0)).current;
@@ -211,7 +217,7 @@ export default function ResultScreen(props) {
 
   var saveToHistory = async function () {
     try {
-      var id = Date.now().toString();
+      var id = historyIdRef.current;
       var historyItem = {
         id: id,
         date: new Date().toISOString(),
@@ -226,14 +232,18 @@ export default function ResultScreen(props) {
         cookRating: 0,
         challengerRating: 0,
         photoUri: null,
+        photoFileName: null,
       };
 
       var existing = await AsyncStorage.getItem('cookingHistory');
       var history = existing ? JSON.parse(existing) : [];
       history.push(historyItem);
+      // Geçmişi sınırla: en eski kayıtlar düşer (sınırsız büyüme önlenir)
+      if (history.length > 100) {
+        history = history.slice(history.length - 100);
+      }
       await AsyncStorage.setItem('cookingHistory', JSON.stringify(history));
-      setHistoryId(id);
-      console.log('Gecmise kaydedildi:', recipeName);
+      console.log('Geçmişe kaydedildi:', recipeName);
     } catch (error) {
       console.log('Kayit hatasi:', error);
     }
@@ -318,16 +328,17 @@ export default function ResultScreen(props) {
         setPhotoUri(newUri);
         setShowCamera(false);
 
-        if (historyId) {
-          var existing = await AsyncStorage.getItem('cookingHistory');
-          if (existing) {
-            var history = JSON.parse(existing);
-            var index = history.findIndex(function (item) { return item.id === historyId; });
-            if (index !== -1) {
-              history[index].photoUri = newUri;
-              await AsyncStorage.setItem('cookingHistory', JSON.stringify(history));
-              console.log('📸 Fotograf gecmise eklendi');
-            }
+        var existing = await AsyncStorage.getItem('cookingHistory');
+        if (existing) {
+          var history = JSON.parse(existing);
+          var index = history.findIndex(function (item) { return item.id === historyId; });
+          if (index !== -1) {
+            // Dosya ADI da saklanır: iOS'ta uygulama güncellemesinde container yolu
+            // değişir, mutlak photoUri geçersizleşir — History dosya adından yeniden kurar
+            history[index].photoUri = newUri;
+            history[index].photoFileName = fileName;
+            await AsyncStorage.setItem('cookingHistory', JSON.stringify(history));
+            console.log('📸 Fotograf gecmise eklendi');
           }
         }
       } catch (error) {
@@ -357,14 +368,18 @@ export default function ResultScreen(props) {
     navigation.reset({ index: 0, routes: [{ name: 'Setup' }] });
   };
 
-  var confettiPieces = [];
-  for (var i = 0; i < 30; i++) {
-    confettiPieces.push({
-      id: i,
-      delay: Math.random() * 1500,
-      startX: Math.random() * screenWidth,
-    });
-  }
+  // Konfeti konum/gecikmeleri bir kez üretilir — re-render'da değişmez
+  var confettiPieces = useRef((function () {
+    var arr = [];
+    for (var i = 0; i < 30; i++) {
+      arr.push({
+        id: i,
+        delay: Math.random() * 1500,
+        startX: Math.random() * screenWidth,
+      });
+    }
+    return arr;
+  })()).current;
 
   if (showCamera) {
     return (
@@ -401,7 +416,7 @@ export default function ResultScreen(props) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar style="light" />
 
       <View style={styles.confettiContainer} pointerEvents="none">
@@ -487,7 +502,7 @@ export default function ResultScreen(props) {
 
         <View style={{ height: 50 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

@@ -245,7 +245,7 @@ export default function SetupScreen(props) {
   };
 
   return (
-    <ImageBackground source={require('../assets/background.png')} style={styles.bgImage} resizeMode="cover">
+    <ImageBackground source={require('../assets/background.jpg')} style={styles.bgImage} resizeMode="cover">
       <StatusBar style="dark" />
       <View style={styles.overlay} />
 

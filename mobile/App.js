@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -13,6 +13,41 @@ import ResultScreen from './screens/ResultScreen';
 import HistoryScreen from './screens/HistoryScreen';
 
 const Stack = createNativeStackNavigator();
+
+// Production'da beklenmedik render hatasında beyaz ekran yerine kurtarma ekranı göster
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, info) {
+    console.log('ErrorBoundary yakaladı:', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FF7A45', padding: 32 }}>
+          <Text style={{ fontSize: 60, marginBottom: 16 }}>🍳</Text>
+          <Text style={{ fontSize: 22, fontWeight: '900', color: '#FFFFFF', marginBottom: 8, textAlign: 'center' }}>Bir şeyler ters gitti</Text>
+          <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.9)', textAlign: 'center', marginBottom: 24 }}>Mutfakta küçük bir kaza oldu. Baştan başlayalım!</Text>
+          <TouchableOpacity
+            onPress={() => this.setState({ hasError: false })}
+            style={{ backgroundColor: 'rgba(255,255,255,0.25)', borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)', paddingVertical: 14, paddingHorizontal: 36, borderRadius: 26 }}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '800' }}>Yeniden Başlat</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -42,19 +77,21 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator
-        initialRouteName={initialRoute}
-        screenOptions={{ headerShown: false }}
-      >
-        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-        <Stack.Screen name="Setup" component={SetupScreen} />
-        <Stack.Screen name="Transition" component={TransitionScreen} />
-        <Stack.Screen name="Cook" component={CookScreen} />
-        <Stack.Screen name="Challenger" component={ChallengerScreen} />
-        <Stack.Screen name="Result" component={ResultScreen} />
-        <Stack.Screen name="History" component={HistoryScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <ErrorBoundary>
+      <NavigationContainer>
+        <Stack.Navigator
+          initialRouteName={initialRoute}
+          screenOptions={{ headerShown: false }}
+        >
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+          <Stack.Screen name="Setup" component={SetupScreen} />
+          <Stack.Screen name="Transition" component={TransitionScreen} />
+          <Stack.Screen name="Cook" component={CookScreen} />
+          <Stack.Screen name="Challenger" component={ChallengerScreen} />
+          <Stack.Screen name="Result" component={ResultScreen} />
+          <Stack.Screen name="History" component={HistoryScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </ErrorBoundary>
   );
 }

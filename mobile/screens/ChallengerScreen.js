@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  StyleSheet, Text, View, ScrollView, SafeAreaView,
+  StyleSheet, Text, View, ScrollView,
   TouchableOpacity, Animated, Dimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -119,7 +119,7 @@ export default function ChallengerScreen(props) {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar style="light" />
 
       <TutorialOverlay
@@ -173,7 +173,7 @@ export default function ChallengerScreen(props) {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { TASK_POOL } = require('./taskPool');
 require('dotenv').config();
@@ -48,8 +49,41 @@ const PORT = process.env.PORT || 3001;
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
 
+// Render/Railway gibi proxy arkasında gerçek istemci IP'sini gör — yoksa
+// rate limit tüm kullanıcılar için tek IP üzerinden (global) çalışır
+app.set('trust proxy', 1);
+
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10kb' }));
+
+// IP başına dakikada 6 tarif isteği — Gemini kota/fatura koruması
+const recipeLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 6,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Çok fazla istek. Lütfen biraz bekleyin.' },
+});
+app.use('/api/', recipeLimiter);
+
+// Basit uygulama imzası: APP_SECRET tanımlıysa istemci x-app-key başlığı göndermek zorunda
+app.use('/api/', (req, res, next) => {
+  if (process.env.APP_SECRET && req.get('x-app-key') !== process.env.APP_SECRET) {
+    return res.status(401).json({ error: 'Yetkisiz istek' });
+  }
+  next();
+});
+
+// Girdi doğrulama: tip + uzunluk sınırları (prompt şişirme/injection yüzeyini daraltır)
+function validateRecipeInput(body) {
+  const isStr = (v, max) => typeof v === 'string' && v.trim().length > 0 && v.length <= max;
+  if (!isStr(body.ingredients, 300)) return 'Geçersiz malzeme listesi (en fazla 300 karakter)';
+  if (!isStr(body.cookName, 40) || !isStr(body.challengerName, 40)) return 'Geçersiz isim';
+  if (body.difficulty !== 'gundelik' && body.difficulty !== 'sef') return 'Geçersiz zorluk seviyesi';
+  const validList = (l) => l === undefined || (Array.isArray(l) && l.length <= 20 && l.every((x) => typeof x === 'string' && x.length <= 120));
+  if (!validList(body.previousRecipes) || !validList(body.previousTasks)) return 'Geçersiz geçmiş listesi';
+  return null;
+}
 
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
@@ -57,13 +91,19 @@ app.get('/health', (req, res) => {
 
 app.post('/api/recipe', async (req, res) => {
   try {
-    const { ingredients, difficulty, cookName, challengerName, variationSeed, attemptNumber, previousRecipes, previousTasks } = req.body;
+    const { ingredients, difficulty, cookName, challengerName, variationSeed, attemptNumber, previousRecipes, previousTasks } = req.body || {};
 
-    if (!ingredients || !difficulty || !cookName || !challengerName) {
-      return res.status(400).json({ error: 'Eksik parametreler' });
+    const validationError = validateRecipeInput(req.body || {});
+    if (validationError) {
+      return res.status(400).json({ error: validationError });
     }
 
-    console.log('🤖 AI İsteği:', { ingredients, difficulty, cookName, challengerName, attemptNumber, previousRecipes, previousTasks });
+    // PII maskeleme: isimler loglanmaz
+    console.log('🤖 AI İsteği:', { ingredients: ingredients.substring(0, 60), difficulty, attemptNumber, prevRecipes: (previousRecipes || []).length, prevTasks: (previousTasks || []).length });
+
+    // İstemci bağlantıyı kopardıysa 2. Gemini çağrısını boşa yapma
+    let clientGone = false;
+    res.on('close', () => { if (!res.writableEnded) clientGone = true; });
 
     const model = genAI.getGenerativeModel({ 
       model: "gemini-2.5-flash",
@@ -80,7 +120,7 @@ app.post('/api/recipe', async (req, res) => {
     // AI bazen bozuk/eksik JSON döndürebiliyor: 2 deneme hakkı ver
     let parsedData = null;
     let lastError = null;
-    for (let attempt = 1; attempt <= 2 && !parsedData; attempt++) {
+    for (let attempt = 1; attempt <= 2 && !parsedData && !clientGone; attempt++) {
       try {
         const result = await model.generateContent(prompt);
         const fullText = result.response.text();
@@ -92,6 +132,10 @@ app.post('/api/recipe', async (req, res) => {
         if (!candidate.recipe || !candidate.recipe.name || !Array.isArray(candidate.recipe.steps) || candidate.recipe.steps.length === 0) {
           throw new Error('Tarif alanları eksik');
         }
+        // Her adımın metni string olmalı — istemcide render crash'ini önler
+        if (!candidate.recipe.steps.every((s) => s && typeof s.instruction === 'string' && s.instruction.length > 0)) {
+          throw new Error('Adım metinleri eksik/bozuk');
+        }
         if (!Array.isArray(candidate.challengerTasks)) {
           candidate.challengerTasks = [];
         }
@@ -102,6 +146,10 @@ app.post('/api/recipe', async (req, res) => {
       }
     }
 
+    if (clientGone) {
+      console.log('⏹️ İstemci vazgeçti, yanıt gönderilmedi');
+      return;
+    }
     if (!parsedData) throw lastError;
 
     console.log('✅ Tarif:', parsedData.recipe.name);
@@ -111,62 +159,12 @@ app.post('/api/recipe', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Hata:', error.message);
+    if (res.headersSent) return;
+    const msg = String(error && error.message || '').toLowerCase();
+    if (msg.includes('429') || msg.includes('quota') || msg.includes('overloaded') || msg.includes('503')) {
+      return res.status(503).json({ error: 'Sistem şu an yoğun, lütfen birkaç dakika sonra tekrar deneyin.' });
+    }
     res.status(500).json({ error: 'Tarif oluşturulamadı' });
-  }
-});
-
-app.post('/api/recipe/stream', async (req, res) => {
-  try {
-    const { ingredients, difficulty, cookName, challengerName, variationSeed, attemptNumber, previousRecipes, previousTasks } = req.body;
-
-    if (!ingredients || !difficulty || !cookName || !challengerName) {
-      return res.status(400).json({ error: 'Eksik parametreler' });
-    }
-
-    console.log('🤖 AI İsteği (stream):', { ingredients, difficulty, cookName, challengerName });
-
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no');
-    res.flushHeaders();
-
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash",
-      generationConfig: {
-        temperature: 0.8,
-        maxOutputTokens: 16384,
-        // Sef modu: iddiali tarif secimi icin dusunme butcesi ac; gundelik hizli kalsin
-        thinkingConfig: { thinkingBudget: difficulty === 'sef' ? 2048 : 0 },
-      }
-    });
-
-    const prompt = buildPrompt(ingredients, difficulty, cookName, challengerName, variationSeed, attemptNumber, previousRecipes, previousTasks);
-    const result = await model.generateContentStream(prompt);
-
-    let fullText = '';
-    
-    for await (const chunk of result.stream) {
-      fullText += chunk.text();
-      res.write(`data: ${JSON.stringify({ chunk: chunk.text() })}\n\n`);
-    }
-
-    try {
-      const cleanJson = extractJSON(fullText);
-      const parsedData = JSON.parse(cleanJson);
-      console.log('✅ Tarif:', parsedData.recipe.name);
-      res.write(`data: ${JSON.stringify({ done: true, data: parsedData })}\n\n`);
-    } catch (parseError) {
-      console.error('❌ JSON Hatası');
-      res.write(`data: ${JSON.stringify({ error: 'Tarif oluşturulamadı' })}\n\n`);
-    }
-
-    res.end();
-
-  } catch (error) {
-    console.error('❌ Hata:', error.message);
-    res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
-    res.end();
   }
 });
 
