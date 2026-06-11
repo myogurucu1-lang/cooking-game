@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(netstat -ano)",
+      "Bash(tasklist)",
+      "Bash(curl -s -X POST http://localhost:3001/api/recipe -H \"Content-Type: application/json\" -d '{\"ingredients\":\"makarna, salça\",\"difficulty\":\"gundelik\",\"cookName\":\"Ali\",\"challengerName\":\"Veli\",\"variationSeed\":111,\"attemptNumber\":1,\"previousRecipes\":[]}')",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\).on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);console.log\\('TARIF:',j.recipe.name\\);console.log\\('INGREDIENTS:',JSON.stringify\\(j.recipe.ingredients\\)\\);}\\)\")",
+      "Bash(curl -s -X POST http://localhost:3001/api/recipe -H \"Content-Type: application/json\" -d '{\"ingredients\":\"makarna, domates, soğan\",\"difficulty\":\"gundelik\",\"cookName\":\"Ali\",\"challengerName\":\"Ayşe\",\"variationSeed\":12345,\"attemptNumber\":1,\"previousRecipes\":[]}' --max-time 90 -o /tmp/recipe_test.json -w \"HTTP:%{http_code}\")",
+      "Bash(node -e \"var d=require\\('/tmp/recipe_test.json'\\); console.log\\('Yemek:', d.recipe.name\\); console.log\\('Adım sayısı:', d.recipe.steps.length\\); console.log\\('Görev sayısı:', d.challengerTasks.length\\); console.log\\('İlk görev:', d.challengerTasks[0].title\\)\")",
+      "Read(//tmp/**)"
+    ]
+  }
+}
