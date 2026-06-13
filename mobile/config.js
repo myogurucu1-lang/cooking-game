@@ -1,8 +1,8 @@
 // Geliştirme: bilgisayarının yerel ağ IP'si (telefon aynı Wi-Fi'da olmalı).
 // Yayın öncesi: backend'i HTTPS'li bir hosta deploy edip PROD_URL'i doldur ve USE_PROD'u true yap.
 const DEV_URL = 'http://192.168.1.167:3001';
-const PROD_URL = 'https://DOLDUR-deploy-sonrasi.example.com';
-const USE_PROD = false;
+const PROD_URL = 'https://cooking-backend-bf0g.onrender.com';
+const USE_PROD = true;
 
 export const BACKEND_URL = USE_PROD ? PROD_URL : DEV_URL;
 
