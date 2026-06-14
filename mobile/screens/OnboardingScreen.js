@@ -15,25 +15,14 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../theme';
+import { useLang } from '../i18n';
 
 var screenWidth = Dimensions.get('window').width;
 
 var SLIDES = [
-  {
-    emoji: '👨‍🍳',
-    title: 'İki Kişilik Yemek Oyunu',
-    description: 'Mutfakta beraber eğlenmek için tasarlandı. Bir arkadaşınla, partnerinle veya aile bireyinle oyna.',
-  },
-  {
-    emoji: '🤝',
-    title: 'Roller Belli',
-    description: 'Biriniz "Cook" — yemeği pişiren. Diğeriniz "Challenger" — eğlenceli görevler veren. Telefonu el değiştirerek oynayın.',
-  },
-  {
-    emoji: '🎉',
-    title: 'Beraber Başarın',
-    description: 'Malzemelerinizi girin, AI size tarif ve eğlenceli görevler hazırlasın. Sonunda yemeğinizin tadını çıkarın!',
-  },
+  { emoji: '👨‍🍳', titleKey: 'onb.slide1.title', descKey: 'onb.slide1.desc' },
+  { emoji: '🤝', titleKey: 'onb.slide2.title', descKey: 'onb.slide2.desc' },
+  { emoji: '🎉', titleKey: 'onb.slide3.title', descKey: 'onb.slide3.desc' },
 ];
 
 // Tek tip, sabit arka plan rengi — slayt geçişinde ton kaymasını/bantlaşmayı önler
@@ -42,6 +31,7 @@ var BG_COLOR = '#FF7A45';
 export default function OnboardingScreen(props) {
   var navigation = props.navigation;
   var insets = useSafeAreaInsets();
+  var t = useLang().t;
   var scrollRef = useRef(null);
   var indexState = useState(0);
   var currentIndex = indexState[0];
@@ -88,7 +78,7 @@ export default function OnboardingScreen(props) {
         <View style={[styles.skipContainer, { paddingTop: 10 + insets.top }]}>
           {currentIndex < SLIDES.length - 1 ? (
             <TouchableOpacity onPress={goSkip} style={styles.skipButton}>
-              <Text style={styles.skipText}>Geç</Text>
+              <Text style={styles.skipText}>{t('onb.skip')}</Text>
             </TouchableOpacity>
           ) : (
             <View style={{ width: 60 }} />
@@ -113,8 +103,8 @@ export default function OnboardingScreen(props) {
                 <View style={styles.emojiContainer}>
                   <Text style={styles.emoji}>{slide.emoji}</Text>
                 </View>
-                <Text style={styles.title}>{slide.title}</Text>
-                <Text style={styles.description}>{slide.description}</Text>
+                <Text style={styles.title}>{t(slide.titleKey)}</Text>
+                <Text style={styles.description}>{t(slide.descKey)}</Text>
               </View>
             );
           })}
@@ -137,7 +127,7 @@ export default function OnboardingScreen(props) {
 
           <TouchableOpacity onPress={goNext} style={styles.nextButton} activeOpacity={0.8}>
             <Text style={styles.nextButtonText}>
-              {currentIndex < SLIDES.length - 1 ? 'Devam' : 'Başla'}
+              {currentIndex < SLIDES.length - 1 ? t('onb.next') : t('onb.start')}
             </Text>
             <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
           </TouchableOpacity>

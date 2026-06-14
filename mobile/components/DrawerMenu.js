@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useLang } from '../i18n';
 
 var screenWidth = Dimensions.get('window').width;
 var DRAWER_WIDTH = screenWidth * 0.72;
@@ -18,6 +19,11 @@ export default function DrawerMenu(props) {
   var visible = props.visible;
   var onClose = props.onClose;
   var onNavigate = props.onNavigate;
+
+  var langCtx = useLang();
+  var t = langCtx.t;
+  var lang = langCtx.lang;
+  var setLang = langCtx.setLang;
 
   var slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   var overlayAnim = useRef(new Animated.Value(0)).current;
@@ -96,9 +102,32 @@ export default function DrawerMenu(props) {
             <View style={styles.menuIconBg}>
               <Ionicons name="book-outline" size={20} color="#FF6B35" />
             </View>
-            <Text style={styles.menuLabel}>Yemek Gecmisim</Text>
+            <Text style={styles.menuLabel}>{t('drawer.history')}</Text>
             <Ionicons name="chevron-forward" size={18} color="#C0B0A0" />
           </TouchableOpacity>
+
+          <View style={styles.langRow}>
+            <View style={styles.menuIconBg}>
+              <Ionicons name="language-outline" size={20} color="#FF6B35" />
+            </View>
+            <Text style={styles.menuLabel}>{t('drawer.language')}</Text>
+            <View style={styles.langToggle}>
+              <TouchableOpacity
+                style={[styles.langOption, lang === 'tr' && styles.langOptionActive]}
+                onPress={function () { setLang('tr'); }}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.langOptionText, lang === 'tr' && styles.langOptionTextActive]}>TR</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.langOption, lang === 'en' && styles.langOptionActive]}
+                onPress={function () { setLang('en'); }}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.langOptionText, lang === 'en' && styles.langOptionTextActive]}>EN</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
           <View style={styles.drawerFooter}>
             <Text style={styles.footerText}>Cooking Challenge v1.0</Text>
@@ -204,6 +233,36 @@ var styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#5D3A1A',
+  },
+  langRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    marginHorizontal: 10,
+    borderRadius: 14,
+  },
+  langToggle: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(139, 115, 85, 0.1)',
+    borderRadius: 10,
+    padding: 3,
+  },
+  langOption: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  langOptionActive: {
+    backgroundColor: '#FF6B35',
+  },
+  langOptionText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#8B7355',
+  },
+  langOptionTextActive: {
+    color: '#FFFFFF',
   },
   drawerFooter: {
     position: 'absolute',

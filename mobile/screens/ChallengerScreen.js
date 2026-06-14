@@ -9,32 +9,25 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SHADOW, SHADOW_SOFT } from '../theme';
 import TutorialOverlay from '../components/TutorialOverlay';
+import { useLang } from '../i18n';
 
 var screenWidth = Dimensions.get('window').width;
 
-var CHALLENGER_TUTORIAL_STEPS = [
-  {
-    emoji: '⚡',
-    title: 'Görevlerin Hazır!',
-    description: 'Sırası gelen görevi doğru zamanda Cook\'a söyle!',
-    position: 'center',
-  },
-];
-
 var CATEGORY_CONFIG = {
-  eglence:  { color: '#E74C3C', icon: 'happy-outline',     label: 'Eğlence' },
-  sunum:    { color: '#1ABC9C', icon: 'color-palette-outline', label: 'Sunum' },
-  rol:      { color: '#9B59B6', icon: 'person-outline',     label: 'Rol' },
-  dikkat:   { color: '#F39C12', icon: 'alert-circle-outline', label: 'Dikkat' },
-  main:     { color: '#E74C3C', icon: 'star-outline',       label: 'Ana Görev' },
-  side:     { color: '#3498DB', icon: 'flash-outline',      label: 'Yan Görev' },
-  big:      { color: '#E74C3C', icon: 'trophy-outline',     label: 'Büyük Görev' },
-  small:    { color: '#3498DB', icon: 'sparkles-outline',   label: 'Küçük Görev' },
+  eglence:  { color: '#E74C3C', icon: 'happy-outline',     labelKey: 'cat.eglence' },
+  sunum:    { color: '#1ABC9C', icon: 'color-palette-outline', labelKey: 'cat.sunum' },
+  rol:      { color: '#9B59B6', icon: 'person-outline',     labelKey: 'cat.rol' },
+  dikkat:   { color: '#F39C12', icon: 'alert-circle-outline', labelKey: 'cat.dikkat' },
+  main:     { color: '#E74C3C', icon: 'star-outline',       labelKey: 'cat.main' },
+  side:     { color: '#3498DB', icon: 'flash-outline',      labelKey: 'cat.side' },
+  big:      { color: '#E74C3C', icon: 'trophy-outline',     labelKey: 'cat.big' },
+  small:    { color: '#3498DB', icon: 'sparkles-outline',   labelKey: 'cat.small' },
 };
 
 function TaskCard(props) {
   var task = props.task;
   var index = props.index;
+  var t = useLang().t;
 
   var entryAnim = useRef(new Animated.Value(0)).current;
   var entrySlide = useRef(new Animated.Value(50)).current;
@@ -57,7 +50,7 @@ function TaskCard(props) {
       <View style={[styles.cardBack, { borderLeftColor: config.color }]}>
         {triggerStep ? (
           <View style={[styles.stepPill, { backgroundColor: config.color }]}>
-            <Text style={styles.stepPillText}>Adım {triggerStep}</Text>
+            <Text style={styles.stepPillText}>{t('chal.stepBadge', { n: triggerStep })}</Text>
           </View>
         ) : null}
 
@@ -67,7 +60,7 @@ function TaskCard(props) {
             <Text style={styles.cardBackTitle}>{task.title}</Text>
             <View style={[styles.typeBadge, { backgroundColor: config.color + '18' }]}>
               <Ionicons name={config.icon} size={12} color={config.color} />
-              <Text style={[styles.typeBadgeText, { color: config.color }]}>{config.label}</Text>
+              <Text style={[styles.typeBadgeText, { color: config.color }]}>{t(config.labelKey)}</Text>
             </View>
           </View>
         </View>
@@ -78,13 +71,13 @@ function TaskCard(props) {
           {triggerStep ? (
             <View style={styles.metaItem}>
               <Ionicons name="flag-outline" size={13} color={COLORS.textMuted} />
-              <Text style={styles.metaItemText}>Adım {triggerStep}'de</Text>
+              <Text style={styles.metaItemText}>{t('chal.stepAt', { n: triggerStep })}</Text>
             </View>
           ) : null}
           {duration ? (
             <View style={styles.metaItem}>
               <Ionicons name="time-outline" size={13} color={COLORS.textMuted} />
-              <Text style={styles.metaItemText}>{duration} dk</Text>
+              <Text style={styles.metaItemText}>{t('chal.minutes', { n: duration })}</Text>
             </View>
           ) : null}
         </View>
@@ -97,6 +90,7 @@ export default function ChallengerScreen(props) {
   var navigation = props.navigation;
   var route = props.route;
   var insets = useSafeAreaInsets();
+  var t = useLang().t;
 
   var cookName = route.params.cookName;
   var challengerName = route.params.challengerName;
@@ -123,7 +117,7 @@ export default function ChallengerScreen(props) {
       <StatusBar style="light" />
 
       <TutorialOverlay
-        steps={CHALLENGER_TUTORIAL_STEPS}
+        steps={[{ emoji: '⚡', title: t('chal.tutTitle'), description: t('chal.tutDesc'), position: 'center' }]}
         storageKey="challengerTutorialSeen"
       />
 
@@ -139,18 +133,18 @@ export default function ChallengerScreen(props) {
 
             <TouchableOpacity onPress={function () { navigation.goBack(); }} style={styles.cookButton}>
               <Text style={styles.cookButtonEmoji}>👨‍🍳</Text>
-              <Text style={styles.cookButtonText}>Tarife Dön</Text>
+              <Text style={styles.cookButtonText}>{t('chal.back')}</Text>
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.headerTitle}>⚡ Challenger Görevleri</Text>
-          <Text style={styles.headerSubtitle}>{challengerName}, {cookName}'e bu görevleri yaptır!</Text>
+          <Text style={styles.headerTitle}>{t('chal.title')}</Text>
+          <Text style={styles.headerSubtitle}>{t('chal.subtitle', { challenger: challengerName, cook: cookName })}</Text>
         </Animated.View>
       </LinearGradient>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.instructionBox}>
-          <Text style={styles.instructionText}>🎯 Sırası gelen görevi doğru zamanda {cookName}'e söyle!</Text>
+          <Text style={styles.instructionText}>{t('chal.instruction', { cook: cookName })}</Text>
         </View>
 
         {tasks.map(function (task, index) {
@@ -166,8 +160,8 @@ export default function ChallengerScreen(props) {
         {tasks.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyEmoji}>🤷</Text>
-            <Text style={styles.emptyTitle}>Görev Bulunamadı</Text>
-            <Text style={styles.emptySubtitle}>AI bu sefer görev üretmemiş. Tarife geri dönebilirsin.</Text>
+            <Text style={styles.emptyTitle}>{t('chal.emptyTitle')}</Text>
+            <Text style={styles.emptySubtitle}>{t('chal.emptyText')}</Text>
           </View>
         ) : null}
 

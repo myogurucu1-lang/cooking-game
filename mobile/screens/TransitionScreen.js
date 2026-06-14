@@ -5,19 +5,14 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BACKEND_URL, APP_SECRET } from '../config';
 import ChaseAnimation from '../components/ChaseAnimation';
+import { useLang, getLanguage } from '../i18n';
 
-var LOADING_MESSAGES = [
-  'Sebzeler hazırlanıyor...',
-  'Tarif yazılıyor...',
-  'Görevler kuruluyor...',
-  'Mutfakta küçük bir kaos...',
-  'Soğan domatesi kovalıyor...',
-  'Malzemeler buluşuyor...',
-];
+var LOADING_KEYS = ['trans.loading1', 'trans.loading2', 'trans.loading3', 'trans.loading4', 'trans.loading5', 'trans.loading6'];
 
 export default function TransitionScreen(props) {
   var route = props.route;
   var navigation = props.navigation;
+  var t = useLang().t;
 
   var cookName = route.params.cookName;
   var challengerName = route.params.challengerName;
@@ -31,7 +26,7 @@ export default function TransitionScreen(props) {
   useEffect(function () {
     var interval = setInterval(function () {
       setMessageIndex(function (prev) {
-        return (prev + 1) % LOADING_MESSAGES.length;
+        return (prev + 1) % LOADING_KEYS.length;
       });
     }, 1200);
     return function () { clearInterval(interval); };
@@ -49,7 +44,7 @@ export default function TransitionScreen(props) {
         .finally(function () { clearTimeout(timer); })
         .catch(function (err) {
           if (err && err.name === 'AbortError') {
-            throw new Error('Bağlantı zaman aşımına uğradı.');
+            throw new Error(t('trans.timeout'));
           }
           throw err;
         });
@@ -164,6 +159,7 @@ export default function TransitionScreen(props) {
             attemptNumber: attemptNumber,
             previousRecipes: previousRecipes,
             previousTasks: previousTasks,
+            language: getLanguage(),
           }),
         }, 35000);
 
@@ -171,11 +167,11 @@ export default function TransitionScreen(props) {
         try {
           data = await response.json();
         } catch (parseErr) {
-          throw new Error('Sunucudan beklenmeyen yanıt geldi.');
+          throw new Error(t('trans.badResponse'));
         }
 
         if (!response.ok || (data && data.error)) {
-          throw new Error((data && data.error) || 'Tarif oluşturulamadı');
+          throw new Error((data && data.error) || t('trans.failed'));
         }
 
         // Üretilen tarifi ve görevleri geçmişe kaydet ki sonraki denemede tekrar gelmesin
@@ -200,11 +196,11 @@ export default function TransitionScreen(props) {
         console.log('❌ Fetch hatası:', error.message);
         var friendly = error.message || '';
         if (!friendly || friendly.indexOf('Network request failed') !== -1) {
-          friendly = 'Sunucuya ulaşılamadı.';
+          friendly = t('trans.unreachable');
         }
-        Alert.alert('Bağlantı Sorunu', friendly + '\n\nİnternet bağlantını kontrol edip tekrar deneyebilirsin.', [
-          { text: 'Geri Dön', style: 'cancel', onPress: function () { navigation.goBack(); } },
-          { text: 'Tekrar Dene', onPress: function () { fetchRecipe(); } },
+        Alert.alert(t('trans.errorTitle'), friendly + '\n\n' + t('trans.errorBody'), [
+          { text: t('trans.back'), style: 'cancel', onPress: function () { navigation.goBack(); } },
+          { text: t('trans.retry'), onPress: function () { fetchRecipe(); } },
         ]);
       }
     };
@@ -218,10 +214,10 @@ export default function TransitionScreen(props) {
       <ChaseAnimation />
 
       <View style={styles.overlay}>
-        <Text style={styles.title}>Oyun Başlıyor</Text>
-        <Text style={styles.subtitle}>{LOADING_MESSAGES[messageIndex]}</Text>
+        <Text style={styles.title}>{t('trans.title')}</Text>
+        <Text style={styles.subtitle}>{t(LOADING_KEYS[messageIndex])}</Text>
         <View style={styles.dotsContainer}>
-          {LOADING_MESSAGES.map(function (_, i) {
+          {LOADING_KEYS.map(function (_, i) {
             return (
               <View
                 key={i}

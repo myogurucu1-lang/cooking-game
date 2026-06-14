@@ -21,6 +21,7 @@ import { COLORS, SHADOW, SHADOW_SOFT } from '../theme';
 import { useAudioPlayer } from 'expo-audio';
 import { dingSource } from '../utils/SoundManager';
 import { celebrationPattern } from '../utils/HapticManager';
+import { useLang } from '../i18n';
 
 var screenWidth = Dimensions.get('window').width;
 
@@ -112,6 +113,7 @@ function StarRating(props) {
   var playerName = props.playerName;
   var onRate = props.onRate;
   var rating = props.rating;
+  var t = useLang().t;
 
   return (
     <View style={styles.ratingSection}>
@@ -132,9 +134,7 @@ function StarRating(props) {
         })}
       </View>
       {rating > 0 ? (
-        <Text style={styles.ratingText}>
-          {rating === 5 ? 'Muhteşem!' : rating === 4 ? 'Harika!' : rating === 3 ? 'İyi!' : rating === 2 ? 'Fena değil' : 'Hmm...'}
-        </Text>
+        <Text style={styles.ratingText}>{t('res.rate' + rating)}</Text>
       ) : null}
     </View>
   );
@@ -166,6 +166,7 @@ export default function ResultScreen(props) {
   var navigation = props.navigation;
   var route = props.route;
   var insets = useSafeAreaInsets();
+  var t = useLang().t;
 
   var cookName = route.params.cookName;
   var challengerName = route.params.challengerName;
@@ -290,14 +291,14 @@ export default function ResultScreen(props) {
           console.log('📸 Izin sonucu:', JSON.stringify(result));
 
           if (!result.granted) {
-            Alert.alert('İzin Gerekli', 'Fotoğraf çekmek için kamera izni gerekli. Ayarlardan izin verebilirsiniz.');
+            Alert.alert(t('res.permTitle'), t('res.permBody'));
             return;
           }
         } else {
           Alert.alert(
-            'Kamera İzni',
-            'Kamera izni reddedilmiş. Lütfen telefon ayarlarından kamera iznini açın.',
-            [{ text: 'Tamam' }]
+            t('res.permDeniedTitle'),
+            t('res.permDeniedBody'),
+            [{ text: t('res.ok') }]
           );
           return;
         }
@@ -307,7 +308,7 @@ export default function ResultScreen(props) {
       setShowCamera(true);
     } catch (error) {
       console.log('📸 Kamera acma hatasi:', error);
-      Alert.alert('Hata', 'Kamera açılamadı: ' + error.message);
+      Alert.alert(t('res.errorTitle'), t('res.cameraOpenError', { msg: error.message }));
     }
   };
 
@@ -343,25 +344,25 @@ export default function ResultScreen(props) {
         }
       } catch (error) {
         console.log('📸 Fotograf hatasi:', error);
-        Alert.alert('Hata', 'Fotoğraf çekilemedi: ' + error.message);
+        Alert.alert(t('res.errorTitle'), t('res.photoError', { msg: error.message }));
         setShowCamera(false);
       }
     } else {
       console.log('📸 HATA: cameraRef null!');
-      Alert.alert('Hata', 'Kamera henüz hazır değil, birkaç saniye bekleyip tekrar deneyin.');
+      Alert.alert(t('res.errorTitle'), t('res.cameraNotReady'));
     }
   };
 
   var badges = [];
-  badges.push({ emoji: '👨‍🍳', title: 'Yıldız Şef', subtitle: cookName, color: COLORS.primary });
-  badges.push({ emoji: '⚡', title: 'Görev Ustası', subtitle: challengerName, color: COLORS.secondary });
+  badges.push({ emoji: '👨‍🍳', title: t('res.badgeStarChef'), subtitle: cookName, color: COLORS.primary });
+  badges.push({ emoji: '⚡', title: t('res.badgeTaskMaster'), subtitle: challengerName, color: COLORS.secondary });
   if (difficulty === 'sef') {
-    badges.push({ emoji: '🔥', title: 'Cesur Şef', subtitle: 'Şef modunu seçtiniz!', color: '#E74C3C' });
+    badges.push({ emoji: '🔥', title: t('res.badgeBraveChef'), subtitle: t('res.badgeBraveSub'), color: '#E74C3C' });
   } else {
-    badges.push({ emoji: '⏱️', title: 'Hızlı Eller', subtitle: 'Gündelik mod tamamlandı!', color: '#3498DB' });
+    badges.push({ emoji: '⏱️', title: t('res.badgeFastHands'), subtitle: t('res.badgeFastSub'), color: '#3498DB' });
   }
   if (completedSteps === totalSteps) {
-    badges.push({ emoji: '✅', title: 'Mükemmeliyetçi', subtitle: 'Tüm adımlar tamamlandı!', color: COLORS.success });
+    badges.push({ emoji: '✅', title: t('res.badgePerfect'), subtitle: t('res.badgePerfectSub'), color: COLORS.success });
   }
 
   var playAgain = function () {
@@ -390,7 +391,7 @@ export default function ResultScreen(props) {
           facing="back"
           onMountError={function (error) {
             console.log('📸 Kamera mount hatasi:', error);
-            Alert.alert('Kamera Hatası', 'Kamera başlatılamadı.');
+            Alert.alert(t('res.cameraFailTitle'), t('res.cameraFailBody'));
             setShowCamera(false);
           }}
         >
@@ -403,7 +404,7 @@ export default function ResultScreen(props) {
             </TouchableOpacity>
 
             <View style={styles.cameraHint}>
-              <Text style={styles.cameraHintText}>Yemeğinin fotoğrafını çek!</Text>
+              <Text style={styles.cameraHintText}>{t('res.cameraHint')}</Text>
             </View>
 
             <TouchableOpacity style={styles.captureButton} onPress={capturePhoto}>
@@ -430,23 +431,23 @@ export default function ResultScreen(props) {
         <LinearGradient colors={['#FFD93D', '#F4C430', '#E8B800']} style={[styles.celebrationHeader, { paddingTop: 40 + insets.top }]}>
           <Animated.View style={{ opacity: titleAnim, transform: [{ scale: titleAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }) }] }}>
             <Text style={styles.trophyEmoji}>🏆</Text>
-            <Text style={styles.celebrationTitle}>Afiyet Olsun!</Text>
+            <Text style={styles.celebrationTitle}>{t('res.title')}</Text>
           </Animated.View>
           <Animated.View style={{ opacity: subtitleAnim }}>
             <Text style={styles.celebrationRecipe}>{recipeName}</Text>
-            <Text style={styles.celebrationSubtitle}>{cookName} & {challengerName} başardınız!</Text>
+            <Text style={styles.celebrationSubtitle}>{t('res.subtitle', { cook: cookName, challenger: challengerName })}</Text>
           </Animated.View>
         </LinearGradient>
 
         <View style={styles.statsContainer}>
-          <StatItem icon="list-outline" value={completedSteps + '/' + totalSteps} label="Adım" color={COLORS.primary} />
-          <StatItem icon="flash-outline" value={String(totalTasks)} label="Görev" color={COLORS.secondary} />
-          <StatItem icon="time-outline" value={prepTime || '—'} label="Süre" color="#9B59B6" />
-          <StatItem icon="restaurant-outline" value={difficulty === 'sef' ? 'Şef' : 'Gündelik'} label="Zorluk" color="#E74C3C" />
+          <StatItem icon="list-outline" value={completedSteps + '/' + totalSteps} label={t('res.statStep')} color={COLORS.primary} />
+          <StatItem icon="flash-outline" value={String(totalTasks)} label={t('res.statTask')} color={COLORS.secondary} />
+          <StatItem icon="time-outline" value={prepTime || '—'} label={t('res.statTime')} color="#9B59B6" />
+          <StatItem icon="restaurant-outline" value={difficulty === 'sef' ? t('setup.chef') : t('setup.everyday')} label={t('res.statDifficulty')} color="#E74C3C" />
         </View>
 
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>📸 Yemeğinin Fotoğrafı</Text>
+          <Text style={styles.sectionTitle}>{t('res.photoSection')}</Text>
           {photoUri ? (
             <View style={styles.photoPreviewContainer}>
               <View style={styles.photoPreview}>
@@ -454,22 +455,22 @@ export default function ResultScreen(props) {
               </View>
               <TouchableOpacity style={styles.retakeButton} onPress={takePhoto}>
                 <Ionicons name="camera-outline" size={16} color={COLORS.primary} />
-                <Text style={styles.retakeText}>Tekrar Çek</Text>
+                <Text style={styles.retakeText}>{t('res.retake')}</Text>
               </TouchableOpacity>
             </View>
           ) : (
             <TouchableOpacity style={styles.photoButton} onPress={takePhoto} activeOpacity={0.8}>
               <LinearGradient colors={['#FFF8F0', '#FFF0E5']} style={styles.photoButtonGradient}>
                 <Text style={styles.photoButtonEmoji}>📷</Text>
-                <Text style={styles.photoButtonText}>Fotoğraf Çek</Text>
-                <Text style={styles.photoButtonHint}>Yemeğini ölümsüzleştir!</Text>
+                <Text style={styles.photoButtonText}>{t('res.takePhoto')}</Text>
+                <Text style={styles.photoButtonHint}>{t('res.photoHint')}</Text>
               </LinearGradient>
             </TouchableOpacity>
           )}
         </View>
 
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>🎖️ Rozetler</Text>
+          <Text style={styles.sectionTitle}>{t('res.badges')}</Text>
           <View style={styles.badgesGrid}>
             {badges.map(function (badge, index) {
               return <BadgeCard key={index} emoji={badge.emoji} title={badge.title} subtitle={badge.subtitle} color={badge.color} delay={400 + index * 200} />;
@@ -478,24 +479,24 @@ export default function ResultScreen(props) {
         </View>
 
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>⭐ Birbirinizi Puanlayın</Text>
+          <Text style={styles.sectionTitle}>{t('res.ratingSection')}</Text>
           <View style={styles.ratingsContainer}>
-            <StarRating label="Şefin Performansı" playerName={cookName} rating={cookRating} onRate={handleCookRating} />
+            <StarRating label={t('res.cookPerf')} playerName={cookName} rating={cookRating} onRate={handleCookRating} />
             <View style={styles.ratingDivider} />
-            <StarRating label="Challenger Performansı" playerName={challengerName} rating={challengerRating} onRate={handleChallengerRating} />
+            <StarRating label={t('res.chalPerf')} playerName={challengerName} rating={challengerRating} onRate={handleChallengerRating} />
           </View>
         </View>
 
         <View style={styles.buttonsContainer}>
           <View style={styles.savedBadge}>
             <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
-            <Text style={styles.savedText}>Geçmişe kaydedildi!</Text>
+            <Text style={styles.savedText}>{t('res.saved')}</Text>
           </View>
 
           <TouchableOpacity style={styles.playAgainButton} onPress={playAgain} activeOpacity={0.8}>
             <LinearGradient colors={[COLORS.primary, COLORS.primaryDark]} style={styles.playAgainGradient}>
               <Ionicons name="refresh" size={22} color="#FFFFFF" />
-              <Text style={styles.playAgainText}>Tekrar Oyna</Text>
+              <Text style={styles.playAgainText}>{t('res.playAgain')}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>

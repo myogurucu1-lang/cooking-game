@@ -3,6 +3,7 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { TASK_POOL } = require('./taskPool');
+const { TASK_POOL_EN } = require('./taskPool.en');
 require('dotenv').config();
 
 // Seed'e bağlı deterministik RNG — aynı seed aynı aday listesini üretir
@@ -15,10 +16,11 @@ function mulberry32(a) {
   };
 }
 
-// Havuzdan her istek için rastgele aday alt kümesi seç
-function sampleTasks(difficulty, seed) {
+// Havuzdan her istek için rastgele aday alt kümesi seç (dile göre havuz)
+function sampleTasks(difficulty, seed, language) {
+  const pool = language === 'en' ? TASK_POOL_EN : TASK_POOL;
   const rng = mulberry32((seed >>> 0) || 12345);
-  const eligible = TASK_POOL.filter(t => t.mode === 'both' || t.mode === difficulty);
+  const eligible = pool.filter(t => t.mode === 'both' || t.mode === difficulty);
 
   const shuffled = eligible.slice();
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -92,6 +94,7 @@ app.get('/health', (req, res) => {
 app.post('/api/recipe', async (req, res) => {
   try {
     const { ingredients, difficulty, cookName, challengerName, variationSeed, attemptNumber, previousRecipes, previousTasks } = req.body || {};
+    const language = (req.body && req.body.language === 'en') ? 'en' : 'tr';
 
     const validationError = validateRecipeInput(req.body || {});
     if (validationError) {
@@ -115,7 +118,7 @@ app.post('/api/recipe', async (req, res) => {
       }
     });
 
-    const prompt = buildPrompt(ingredients, difficulty, cookName, challengerName, variationSeed, attemptNumber, previousRecipes, previousTasks);
+    const prompt = buildPrompt(ingredients, difficulty, cookName, challengerName, variationSeed, attemptNumber, previousRecipes, previousTasks, language);
 
     // AI bazen bozuk/eksik JSON döndürebiliyor: 2 deneme hakkı ver
     let parsedData = null;
@@ -168,12 +171,17 @@ app.post('/api/recipe', async (req, res) => {
   }
 });
 
-function buildPrompt(ingredients, difficulty, cookName, challengerName, variationSeed, attemptNumber, previousRecipes, previousTasks) {
+function buildPrompt(ingredients, difficulty, cookName, challengerName, variationSeed, attemptNumber, previousRecipes, previousTasks, language) {
   const isGundelik = difficulty === 'gundelik';
   const seed = variationSeed || Math.floor(Math.random() * 100000);
   const prevList = (previousRecipes && previousRecipes.length) ? previousRecipes : [];
   const prevTasks = (previousTasks && previousTasks.length) ? previousTasks : [];
-  const taskCandidates = sampleTasks(difficulty, seed);
+  const taskCandidates = sampleTasks(difficulty, seed, language);
+
+  if (language === 'en') {
+    return buildPromptEn(ingredients, difficulty, isGundelik, cookName, challengerName, seed, prevList, prevTasks, taskCandidates);
+  }
+
   const candidateLines = taskCandidates.map(function (t, i) {
     return (i + 1) + '. ' + t.text + (t.safeOnly ? ' [SADECE bıçak/sıcak yağ/ateş içermeyen adımda ver]' : '');
   }).join('\n');
@@ -240,6 +248,74 @@ YASAK GÖREVLER: Romantik/duygusal, fiziksel temas, kamera/kayıt, ateş/süre/p
   },
   "challengerTasks": [
     { "id": 1, "title": "görev başlığı", "description": "${challengerName}, ${cookName}'e ... yaptır", "type": "main", "triggerAtStep": 3, "duration": 5 }
+  ]
+}`;
+}
+
+function buildPromptEn(ingredients, difficulty, isGundelik, cookName, challengerName, seed, prevList, prevTasks, taskCandidates) {
+  const candidateLines = taskCandidates.map(function (t, i) {
+    return (i + 1) + '. ' + t.text + (t.safeOnly ? ' [ONLY give during a step with no knife/hot oil/fire]' : '');
+  }).join('\n');
+
+  return `You generate a RECIPE and CHALLENGE tasks for a 2-player cooking game.
+Return ONLY valid JSON, nothing else. ALL output text (recipe name, description, steps, task titles and descriptions) MUST be in English.
+
+INPUTS:
+- Ingredients: ${ingredients}
+- Mode: ${difficulty}
+- Cook (the one cooking): ${cookName}
+- Challenger (the one giving tasks): ${challengerName}
+
+═══ ABSOLUTE RULES (NON-NEGOTIABLE) ═══
+
+1) REAL DISH: The dish MUST be a real, known dish from world/international cuisine (home-style or restaurant). No made-up names, no "X-style", no "special version", no "tornado/volcano" nonsense. If a dish has a well-known authentic name (Italian, French, Spanish, etc.), use that real name.
+
+2) INGREDIENT LIMIT: Use only the ingredients the user gave. The ONLY free extras are: salt, black pepper, chili flakes, cooking oil. Add NOTHING else (no egg, cheese, milk, onion, garlic, rice, flour, meat, etc. unless the user listed it). If the ingredients are not enough for a dish, pick a real dish that CAN be made with what is given.
+
+3) CORRECT TECHNIQUE AND FORM:
+- Use each ingredient the way it is really used.
+- Cook whole/sliced cuts of meat (steak, chicken breast, chops) as such — do NOT mince or grind them.
+- No special equipment (grinder, blender, mixer). Only knife, pot, pan, oven.
+- Do not use an ingredient with a technique it is never used for.
+
+4) VARIETY (without breaking the rules):
+- Variation: #${seed}
+- FIRST: with these ingredients (only the given ones + salt/pepper/chili/oil), mentally list several DIFFERENT real dishes. There is almost always more than one, thanks to different cooking methods (pan, oven, stew, grill, boil, sauté, etc.).
+${prevList.length ? `- YOU ARE FORBIDDEN from producing the following dishes (the user already saw and disliked them):
+${prevList.map((n) => '  • ' + n).join('\n')}
+- Do not give the same dish or a tiny variation of it. Choose a genuinely different dish.` : '- Try to pick a real alternative beyond the most cliché option.'}
+- NEVER for the sake of variety: add new ingredients, invent fake dishes, or attach unrelated ingredients and call it a "new recipe".
+
+═══ MODE ═══
+${isGundelik ? `EVERYDAY: Practical home meal. 5-6 steps. 20-30 minutes. One pot/pan. No showing off.` : `CHEF: DIFFERENT from everyday, more ambitious but still a REAL dish. Think of international classics; avoid the most basic home version. 8-12 steps. 45-90 minutes. The last step is always PLATING.`}
+
+═══ CHALLENGE TASKS ═══
+Goal: entertain ${cookName}, create a "we did it together" feeling. NEVER ruin the food.
+Number of tasks: ${isGundelik ? '1 main + 2-3 side tasks (3-4 total)' : '3 main + 2-3 side tasks. Last task is plating.'}
+
+ALLOWED TASKS (choose ONLY from this list, do not invent tasks not on it; personalize the chosen ones to ${cookName} and the recipe steps):
+${candidateLines}
+${prevTasks.length ? `
+PREVIOUSLY GIVEN TASKS (do NOT repeat these or very similar ones, pick different ones from the list):
+${prevTasks.map((t) => '  • ' + t).join('\n')}
+` : ''}
+FORBIDDEN TASKS: romantic/emotional, physical contact, camera/recording, decisions about heat/time/cooking, slow motion, whispering, personal/embarrassing questions, throwing ingredients/physical acrobatics, shouting. Nothing outside the list above.
+
+═══ JSON FORMAT ═══
+{
+  "recipe": {
+    "name": "real dish name",
+    "description": "short description",
+    "prepTime": "${isGundelik ? '20-30 minutes' : '45-90 minutes'}",
+    "difficulty": "${difficulty}",
+    "servings": "2 servings",
+    "ingredients": ["amount + ingredient"],
+    "steps": [
+      { "step": 1, "instruction": "step", "duration": "X minutes", "heat": "heat level" }
+    ]
+  },
+  "challengerTasks": [
+    { "id": 1, "title": "task title", "description": "${challengerName}, make ${cookName} ...", "type": "main", "triggerAtStep": 3, "duration": 5 }
   ]
 }`;
 }

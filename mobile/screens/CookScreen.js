@@ -12,6 +12,7 @@ import SpotlightTutorial from '../components/SpotlightTutorial';
 import { useAudioPlayer } from 'expo-audio';
 import { fireSource } from '../utils/SoundManager';
 import { mediumTap, lightTap, celebrationPattern } from '../utils/HapticManager';
+import { useLang } from '../i18n';
 
 var screenWidth = Dimensions.get('window').width;
 var screenHeight = Dimensions.get('window').height;
@@ -118,6 +119,7 @@ export default function CookScreen(props) {
   var navigation = props.navigation;
   var route = props.route;
   var insets = useSafeAreaInsets();
+  var t = useLang().t;
 
   var cookName = route.params.cookName;
   var challengerName = route.params.challengerName;
@@ -250,11 +252,11 @@ export default function CookScreen(props) {
       if (e.data.action.type === 'REPLACE') return;
       e.preventDefault();
       Alert.alert(
-        'Oyundan çıkılsın mı?',
-        'Tarif ve ilerlemen kaybolacak.',
+        t('cook.exitTitle'),
+        t('cook.exitBody'),
         [
-          { text: 'Kal', style: 'cancel' },
-          { text: 'Çık', style: 'destructive', onPress: function () { navigation.dispatch(e.data.action); } },
+          { text: t('cook.stay'), style: 'cancel' },
+          { text: t('cook.leave'), style: 'destructive', onPress: function () { navigation.dispatch(e.data.action); } },
         ]
       );
     });
@@ -335,7 +337,7 @@ export default function CookScreen(props) {
               style={styles.challengerButton}
             >
               <Text style={styles.challengerButtonEmoji}>⚡</Text>
-              <Text style={styles.challengerButtonText}>Görevler</Text>
+              <Text style={styles.challengerButtonText}>{t('cook.tasks')}</Text>
               {challengerTasks.length > 0 ? (
                 <View style={styles.taskBadge}>
                   <Text style={styles.taskBadgeText}>{challengerTasks.length}</Text>
@@ -364,7 +366,7 @@ export default function CookScreen(props) {
             ) : null}
             <View style={styles.infoBadge}>
               <Ionicons name="restaurant-outline" size={14} color="#FFFFFF" />
-              <Text style={styles.infoText}>{difficulty}</Text>
+              <Text style={styles.infoText}>{difficulty === 'sef' ? t('setup.chef') : t('setup.everyday')}</Text>
             </View>
           </View>
 
@@ -372,14 +374,14 @@ export default function CookScreen(props) {
             <View style={styles.progressBar}>
               <View style={[styles.progressFill, { width: (progress * 100) + '%' }]} />
             </View>
-            <Text style={styles.progressText}>{completedSteps.length}/{steps.length} adım</Text>
+            <Text style={styles.progressText}>{t('cook.stepCount', { done: completedSteps.length, total: steps.length })}</Text>
           </View>
         </Animated.View>
       </LinearGradient>
 
       <ScrollView ref={scrollRef} style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.cookGreeting}>
-          <Text style={styles.cookGreetingText}>👨‍🍳 Haydi {cookName}, başlayalım!</Text>
+          <Text style={styles.cookGreetingText}>👨‍🍳 {t('cook.greeting', { cook: cookName })}</Text>
         </View>
 
         {ingredientList.length > 0 ? (
@@ -387,7 +389,7 @@ export default function CookScreen(props) {
             <TouchableOpacity onPress={function () { setShowIngredients(!showIngredients); }} style={styles.sectionHeader} activeOpacity={0.7}>
               <View style={styles.sectionTitleRow}>
                 <Text style={styles.sectionEmoji}>🥘</Text>
-                <Text style={styles.sectionTitle}>Malzemeler</Text>
+                <Text style={styles.sectionTitle}>{t('cook.ingredients')}</Text>
                 <View style={styles.countBadge}>
                   <Text style={styles.countText}>{ingredientList.length}</Text>
                 </View>
@@ -408,7 +410,7 @@ export default function CookScreen(props) {
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
             <Text style={styles.sectionEmoji}>📝</Text>
-            <Text style={styles.sectionTitle}>Tarif Adımları</Text>
+            <Text style={styles.sectionTitle}>{t('cook.steps')}</Text>
           </View>
 
           <View style={styles.stepsContainer}>
@@ -429,10 +431,10 @@ export default function CookScreen(props) {
           {steps.length === 0 ? (
             <View style={styles.emptySteps}>
               <Text style={styles.emptyStepsEmoji}>🤔</Text>
-              <Text style={styles.emptyStepsTitle}>Tarif adımları yüklenemedi</Text>
-              <Text style={styles.emptyStepsText}>Geri dönüp yeni bir tarif oluşturabilirsin.</Text>
+              <Text style={styles.emptyStepsTitle}>{t('cook.emptyTitle')}</Text>
+              <Text style={styles.emptyStepsText}>{t('cook.emptyText')}</Text>
               <TouchableOpacity style={styles.emptyStepsBtn} onPress={function () { navigation.goBack(); }} activeOpacity={0.8}>
-                <Text style={styles.emptyStepsBtnText}>Geri Dön</Text>
+                <Text style={styles.emptyStepsBtnText}>{t('cook.emptyBtn')}</Text>
               </TouchableOpacity>
             </View>
           ) : null}
@@ -451,7 +453,7 @@ export default function CookScreen(props) {
           >
             <Text style={styles.finishEmoji}>🏆</Text>
             <Text style={[styles.finishText, !allDone && styles.finishTextDisabled]}>
-              {allDone ? 'Yemeği Bitir!' : 'Önce tüm adımları tamamla (' + completedSteps.length + '/' + steps.length + ')'}
+              {allDone ? t('cook.finish') : t('cook.finishProgress', { done: completedSteps.length, total: steps.length })}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -468,8 +470,8 @@ export default function CookScreen(props) {
           storageKey="cookSpotlightSeen"
           maxShows={2}
           spotlight={spotlightArea}
-          title="Görevler burada! ⚡"
-          description={'Tarif boyunca eğlenceli görev zamanı geldiğinde Challenger (' + challengerName + ') bu butona basacak. Telefonu el değiştirin!'}
+          title={t('cook.spotlightTitle')}
+          description={t('cook.spotlightDesc', { challenger: challengerName })}
           arrowDirection="up"
         />
       ) : null}
@@ -489,9 +491,9 @@ export default function CookScreen(props) {
               <Text style={styles.taskAlertEmoji}>⚡</Text>
             </View>
             <View style={styles.taskAlertContent}>
-              <Text style={styles.taskAlertTitle}>Görev zamanı!</Text>
+              <Text style={styles.taskAlertTitle}>{t('cook.taskTime')}</Text>
               <Text style={styles.taskAlertDesc} numberOfLines={2}>
-                {(alertTask.triggerAtStep ? 'Adım ' + alertTask.triggerAtStep + ': ' : '') + alertTask.title} — telefonu {challengerName}'e ver!
+                {t('cook.taskHandoff', { title: (alertTask.triggerAtStep ? t('cook.stepPrefix', { n: alertTask.triggerAtStep }) : '') + alertTask.title, challenger: challengerName })}
               </Text>
             </View>
             <TouchableOpacity onPress={hideTaskAlert} style={styles.taskAlertClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>

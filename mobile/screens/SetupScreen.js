@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SHADOW } from '../theme';
 import DrawerMenu from '../components/DrawerMenu';
+import { useLang } from '../i18n';
 
 var screenWidth = Dimensions.get('window').width;
 
@@ -29,6 +30,7 @@ function CharacterCard(props) {
   var onChangeName = props.onChangeName;
   var animDelay = props.animDelay;
   var accentColor = props.accentColor;
+  var t = useLang().t;
 
   var breathAnim = useRef(new Animated.Value(0)).current;
   var shakeAnim = useRef(new Animated.Value(0)).current;
@@ -100,7 +102,7 @@ function CharacterCard(props) {
 
         <TextInput
           style={[styles.nameInput, { borderColor: accentColor + '40' }]}
-          placeholder="İsim gir"
+          placeholder={t('setup.namePlaceholder')}
           placeholderTextColor="#B0A090"
           value={name}
           onChangeText={onChangeName}
@@ -173,6 +175,7 @@ function PulseVS() {
 export default function SetupScreen(props) {
   var navigation = props.navigation;
   var insets = useSafeAreaInsets();
+  var t = useLang().t;
 
   var cookNameState = useState('');
   var cookName = cookNameState[0];
@@ -259,7 +262,7 @@ export default function SetupScreen(props) {
               <LinearGradient colors={['#FF6B35', '#E85D26']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.subtitleBadge}>
                 <Text style={styles.subtitle}>CHALLENGE</Text>
               </LinearGradient>
-              <Text style={styles.tagline}>Birlikte pişir, birlikte eğlen!</Text>
+              <Text style={styles.tagline}>{t('setup.tagline')}</Text>
             </Animated.View>
 
             <View style={styles.cardsRow}>
@@ -273,12 +276,12 @@ export default function SetupScreen(props) {
                 <View style={styles.sectionIconBg}>
                   <Ionicons name="restaurant" size={16} color="#FFFFFF" />
                 </View>
-                <Text style={styles.sectionTitle}>Malzemeler</Text>
+                <Text style={styles.sectionTitle}>{t('setup.ingredients')}</Text>
               </View>
               <View style={styles.glassCard}>
                 <TextInput
                   style={styles.textArea}
-                  placeholder={"Elindeki malzemeleri yaz...\nÖrn: makarna, salça, tavuk, soğan"}
+                  placeholder={t('setup.ingredientsPlaceholder')}
                   placeholderTextColor="rgba(100,75,55,0.45)"
                   value={ingredients}
                   onChangeText={setIngredients}
@@ -293,7 +296,7 @@ export default function SetupScreen(props) {
                 <View style={[styles.sectionIconBg, { backgroundColor: '#FF6B35' }]}>
                   <Ionicons name="flame" size={16} color="#FFFFFF" />
                 </View>
-                <Text style={styles.sectionTitle}>Zorluk Seviyesi</Text>
+                <Text style={styles.sectionTitle}>{t('setup.difficulty')}</Text>
               </View>
               <View style={styles.levelRow}>
                 <TouchableOpacity
@@ -302,8 +305,8 @@ export default function SetupScreen(props) {
                   activeOpacity={0.8}
                 >
                   <Text style={styles.levelEmoji}>🍳</Text>
-                  <Text style={[styles.levelTitle, difficulty === 'gundelik' && styles.levelTitleActive]}>Gündelik</Text>
-                  <Text style={[styles.levelDesc, difficulty === 'gundelik' && styles.levelDescActive]}>20-30 dk</Text>
+                  <Text style={[styles.levelTitle, difficulty === 'gundelik' && styles.levelTitleActive]}>{t('setup.everyday')}</Text>
+                  <Text style={[styles.levelDesc, difficulty === 'gundelik' && styles.levelDescActive]}>{t('setup.everydayTime')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.levelBtn, difficulty === 'sef' && styles.levelBtnActiveSef]}
@@ -311,8 +314,8 @@ export default function SetupScreen(props) {
                   activeOpacity={0.8}
                 >
                   <Text style={styles.levelEmoji}>👨‍🍳</Text>
-                  <Text style={[styles.levelTitle, difficulty === 'sef' && styles.levelTitleActive]}>Şef</Text>
-                  <Text style={[styles.levelDesc, difficulty === 'sef' && styles.levelDescActive]}>45-90 dk</Text>
+                  <Text style={[styles.levelTitle, difficulty === 'sef' && styles.levelTitleActive]}>{t('setup.chef')}</Text>
+                  <Text style={[styles.levelDesc, difficulty === 'sef' && styles.levelDescActive]}>{t('setup.chefTime')}</Text>
                 </TouchableOpacity>
               </View>
             </Animated.View>
@@ -332,7 +335,7 @@ export default function SetupScreen(props) {
                   style={styles.startBtnGradient}
                 >
                   <Ionicons name="play-circle" size={26} color="#FFFFFF" />
-                  <Text style={styles.startText}>OYUNU BAŞLAT</Text>
+                  <Text style={styles.startText}>{t('setup.start')}</Text>
                   <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
                 </LinearGradient>
               </TouchableOpacity>

@@ -4,6 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { LanguageProvider } from './i18n';
 import OnboardingScreen from './screens/OnboardingScreen';
 import SetupScreen from './screens/SetupScreen';
 import TransitionScreen from './screens/TransitionScreen';
@@ -78,6 +79,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
+      <LanguageProvider>
       <NavigationContainer>
         <Stack.Navigator
           initialRouteName={initialRoute}
@@ -92,6 +94,7 @@ export default function App() {
           <Stack.Screen name="History" component={HistoryScreen} />
         </Stack.Navigator>
       </NavigationContainer>
+      </LanguageProvider>
     </ErrorBoundary>
   );
 }
