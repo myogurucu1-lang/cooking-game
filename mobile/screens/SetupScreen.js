@@ -251,17 +251,7 @@ export default function SetupScreen(props) {
 
       <View style={styles.safeArea}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
-          <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 10 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-
-            <TouchableOpacity
-              style={styles.hamburgerButton}
-              onPress={openDrawer}
-              activeOpacity={0.7}
-            >
-              <View style={styles.hamburgerLine} />
-              <View style={styles.hamburgerLine} />
-              <View style={styles.hamburgerLine} />
-            </TouchableOpacity>
+          <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 64 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
             <Animated.View style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
               <Text style={styles.titleIcon}>👨‍🍳</Text>
@@ -351,6 +341,17 @@ export default function SetupScreen(props) {
             <View style={{ height: 50 }} />
           </ScrollView>
         </KeyboardAvoidingView>
+
+        {/* Hamburger — ScrollView dışında, ekrana sabit */}
+        <TouchableOpacity
+          style={[styles.hamburgerButton, { top: insets.top + 10 }]}
+          onPress={openDrawer}
+          activeOpacity={0.7}
+        >
+          <View style={styles.hamburgerLine} />
+          <View style={styles.hamburgerLine} />
+          <View style={styles.hamburgerLine} />
+        </TouchableOpacity>
       </View>
 
       <DrawerMenu
@@ -370,10 +371,13 @@ var styles = StyleSheet.create({
   scrollContent: { padding: 20 },
 
   hamburgerButton: {
+    position: 'absolute',
+    left: 20,
+    zIndex: 20,
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,252,248,0.85)',
+    backgroundColor: 'rgba(255,252,248,0.92)',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 5,
@@ -384,7 +388,6 @@ var styles = StyleSheet.create({
     elevation: 4,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.7)',
-    marginBottom: 5,
   },
   hamburgerLine: {
     width: 20,
