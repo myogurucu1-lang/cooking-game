@@ -150,6 +150,11 @@ var translations = {
     // Drawer
     'drawer.history': 'Yemek Geçmişim',
     'drawer.language': 'Dil',
+
+    // Common (tutorial vb.)
+    'common.gotIt': 'Anladım',
+    'common.letsStart': 'Başlayalım!',
+    'common.skip': 'Atla',
   },
 
   en: {
@@ -298,6 +303,11 @@ var translations = {
     // Drawer
     'drawer.history': 'My Cooking History',
     'drawer.language': 'Language',
+
+    // Common (tutorial etc.)
+    'common.gotIt': 'Got it',
+    'common.letsStart': "Let's start!",
+    'common.skip': 'Skip',
   },
 };
 

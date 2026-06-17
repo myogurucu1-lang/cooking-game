@@ -347,21 +347,12 @@ export default function CookScreen(props) {
           </View>
 
           <Text style={styles.recipeName}>{recipeData && recipeData.name ? recipeData.name : 'Tarif'}</Text>
-          {recipeData && recipeData.description ? (
-            <Text style={styles.recipeDesc}>{recipeData.description}</Text>
-          ) : null}
 
           <View style={styles.infoRow}>
             {recipeData && recipeData.prepTime ? (
               <View style={styles.infoBadge}>
                 <Ionicons name="time-outline" size={14} color="#FFFFFF" />
                 <Text style={styles.infoText}>{recipeData.prepTime}</Text>
-              </View>
-            ) : null}
-            {recipeData && recipeData.servings ? (
-              <View style={styles.infoBadge}>
-                <Ionicons name="people-outline" size={14} color="#FFFFFF" />
-                <Text style={styles.infoText}>{recipeData.servings}</Text>
               </View>
             ) : null}
             <View style={styles.infoBadge}>

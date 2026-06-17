@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLang } from '../i18n';
 
 var screenWidth = Dimensions.get('window').width;
 var screenHeight = Dimensions.get('window').height;
@@ -30,6 +31,7 @@ export default function SpotlightTutorial(props) {
   var title = props.title || 'Görevler burada!';
   var description = props.description || 'Tarif boyunca challenger görevleri için bu butona bas.';
   var arrowDirection = props.arrowDirection || 'up';
+  var t = useLang().t;
 
   var visibleState = useState(false);
   var visible = visibleState[0];
@@ -211,7 +213,7 @@ export default function SpotlightTutorial(props) {
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.description}>{description}</Text>
           <TouchableOpacity onPress={dismiss} style={styles.button} activeOpacity={0.8}>
-            <Text style={styles.buttonText}>Anladım</Text>
+            <Text style={styles.buttonText}>{t('common.gotIt')}</Text>
           </TouchableOpacity>
         </View>
       </View>

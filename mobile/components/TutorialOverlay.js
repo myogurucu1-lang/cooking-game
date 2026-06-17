@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLang } from '../i18n';
 
 var screenWidth = Dimensions.get('window').width;
 var screenHeight = Dimensions.get('window').height;
@@ -17,6 +18,7 @@ export default function TutorialOverlay(props) {
   var steps = props.steps;
   var onFinish = props.onFinish;
   var storageKey = props.storageKey || null;
+  var t = useLang().t;
 
   var currentStepState = useState(0);
   var currentStep = currentStepState[0];
@@ -144,7 +146,7 @@ export default function TutorialOverlay(props) {
 
             <TouchableOpacity style={styles.nextButton} onPress={nextStep} activeOpacity={0.8}>
               <Text style={styles.nextText}>
-                {isLast ? 'Başlayalım!' : 'Anladım'}
+                {isLast ? t('common.letsStart') : t('common.gotIt')}
               </Text>
               <Ionicons
                 name={isLast ? 'checkmark' : 'arrow-forward'}
@@ -157,7 +159,7 @@ export default function TutorialOverlay(props) {
       </Animated.View>
 
       <TouchableOpacity style={styles.skipButton} onPress={finishTutorial} activeOpacity={0.7}>
-        <Text style={styles.skipText}>Atla</Text>
+        <Text style={styles.skipText}>{t('common.skip')}</Text>
       </TouchableOpacity>
     </Animated.View>
   );
