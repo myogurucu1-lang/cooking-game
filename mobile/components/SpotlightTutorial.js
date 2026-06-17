@@ -49,7 +49,10 @@ export default function SpotlightTutorial(props) {
     try {
       var stored = await AsyncStorage.getItem(storageKey);
       var count = stored ? parseInt(stored, 10) : 0;
-      if (count < maxShows) {
+      var willShow = count < maxShows;
+      // Ebeveyne haber ver: tutorial gösterilecek mi? (banner'ı sıraya koymak için)
+      if (props.onResolve) props.onResolve(willShow);
+      if (willShow) {
         // Kısa gecikme — ekran yüklendikten sonra göster
         setTimeout(function () {
           setVisible(true);
@@ -64,6 +67,7 @@ export default function SpotlightTutorial(props) {
       }
     } catch (e) {
       console.log('Tutorial check hatasi:', e);
+      if (props.onResolve) props.onResolve(false);
     }
   };
 
@@ -116,6 +120,7 @@ export default function SpotlightTutorial(props) {
       useNativeDriver: true,
     }).start(function () {
       setVisible(false);
+      if (props.onDismiss) props.onDismiss();
     });
   };
 

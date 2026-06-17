@@ -171,6 +171,7 @@ export default function CookScreen(props) {
   var badgePulse = useRef(new Animated.Value(1)).current;  // buton rozeti nabzı
   var iconLoopRef = useRef(null);
   var badgeLoopRef = useRef(null);
+  var pendingFirstTaskRef = useRef(null);  // 1. adım görevi — tutorial ile çakışmasın diye bekletilir
 
   var startPulse = function (animVal, loopRef, toValue) {
     if (loopRef.current) return;
@@ -226,6 +227,23 @@ export default function CookScreen(props) {
     return found;
   };
 
+  // Bekleyen ilk-adım görevini (varsa) göster — bir kez
+  var fireFirstTaskIfAny = function () {
+    if (pendingFirstTaskRef.current) {
+      var task = pendingFirstTaskRef.current;
+      pendingFirstTaskRef.current = null;
+      showTaskAlert(task);
+    }
+  };
+
+  // Tutorial gösterilmeyecekse kısa gecikmeyle, kapanınca ise hemen sonra göster
+  var onSpotlightResolve = function (willShow) {
+    if (!willShow) setTimeout(fireFirstTaskIfAny, 800);
+  };
+  var onSpotlightDismiss = function () {
+    setTimeout(fireFirstTaskIfAny, 400);
+  };
+
   var measureChallengerButton = function () {
     var btn = challengerButtonRef.current;
     var root = rootRef.current;
@@ -261,11 +279,10 @@ export default function CookScreen(props) {
     firePlayer.play();
     mediumTap();
 
-    // İlk adımın görevi varsa kısa gecikmeyle haber ver
-    var firstTaskTimer = setTimeout(function () {
-      var firstTask = findTaskForStep(1);
-      if (firstTask) showTaskAlert(firstTask);
-    }, 1500);
+    // İlk adımın görevini sakla; tutorial ile çakışmasın diye onun çözümünü/kapanmasını bekler.
+    pendingFirstTaskRef.current = findTaskForStep(1) || null;
+    // Güvenlik ağı: tutorial çözümü hiç gelmezse (ölçüm aksarsa) yine de göster
+    var firstTaskTimer = setTimeout(fireFirstTaskIfAny, 4000);
 
     return function () {
       clearTimeout(t);
@@ -502,6 +519,8 @@ export default function CookScreen(props) {
           title={t('cook.spotlightTitle')}
           description={t('cook.spotlightDesc', { challenger: challengerName })}
           arrowDirection="up"
+          onResolve={onSpotlightResolve}
+          onDismiss={onSpotlightDismiss}
         />
       ) : null}
 
@@ -595,14 +614,14 @@ var styles = StyleSheet.create({
   finishText: { fontSize: 18, fontWeight: '800', color: COLORS.brown },
   finishTextDisabled: { color: '#666666', fontSize: 14 },
 
-  taskAlert: { position: 'absolute', left: 12, right: 12, zIndex: 500 },
-  taskAlertInner: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.secondaryDark, borderRadius: 18, padding: 14, gap: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 10, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)' },
-  taskAlertIconWrap: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  taskAlertEmoji: { fontSize: 22 },
+  taskAlert: { position: 'absolute', left: 10, right: 10, zIndex: 500 },
+  taskAlertInner: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.secondaryDark, borderRadius: 22, padding: 18, gap: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 16, elevation: 12, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
+  taskAlertIconWrap: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' },
+  taskAlertEmoji: { fontSize: 30 },
   taskAlertContent: { flex: 1 },
-  taskAlertTitle: { fontSize: 15, fontWeight: '900', color: '#FFFFFF', marginBottom: 2 },
-  taskAlertDesc: { fontSize: 12, lineHeight: 17, color: 'rgba(255,255,255,0.9)', fontWeight: '600' },
-  taskAlertClose: { padding: 2 },
+  taskAlertTitle: { fontSize: 18, fontWeight: '900', color: '#FFFFFF', marginBottom: 3 },
+  taskAlertDesc: { fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.92)', fontWeight: '600' },
+  taskAlertClose: { padding: 4 },
 
   emptySteps: { alignItems: 'center', padding: 32, backgroundColor: COLORS.white, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border },
   emptyStepsEmoji: { fontSize: 44, marginBottom: 10 },
