@@ -10,7 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SHADOW, SHADOW_SOFT } from '../theme';
 import SpotlightTutorial from '../components/SpotlightTutorial';
 import { useAudioPlayer } from 'expo-audio';
-import { fireSource } from '../utils/SoundManager';
+import { fireSource, dingSource } from '../utils/SoundManager';
 import { mediumTap, lightTap, celebrationPattern } from '../utils/HapticManager';
 import { useLang } from '../i18n';
 
@@ -133,6 +133,7 @@ export default function CookScreen(props) {
   var ingredientList = recipeData && recipeData.ingredients ? recipeData.ingredients : [];
 
   var firePlayer = useAudioPlayer(fireSource);
+  var dingPlayer = useAudioPlayer(dingSource);
 
   var completedStepsState = useState([]);
   var completedSteps = completedStepsState[0];
@@ -156,18 +157,43 @@ export default function CookScreen(props) {
   var alertTask = alertTaskState[0];
   var setAlertTask = alertTaskState[1];
 
+  // Bekleyen (henüz görevler ekranında görülmemiş) görev var mı — buton rozeti nabzı için
+  var pendingState = useState(false);
+  var hasPending = pendingState[0];
+  var setHasPending = pendingState[1];
+
   var scrollRef = useRef(null);
   var challengerButtonRef = useRef(null);
   var rootRef = useRef(null);
   var headerAnim = useRef(new Animated.Value(0)).current;
   var bannerAnim = useRef(new Animated.Value(-160)).current;
-  var bannerTimer = useRef(null);
+  var iconPulse = useRef(new Animated.Value(1)).current;   // banner ⚡ ikonu nabzı
+  var badgePulse = useRef(new Animated.Value(1)).current;  // buton rozeti nabzı
+  var iconLoopRef = useRef(null);
+  var badgeLoopRef = useRef(null);
 
-  var hideTaskAlert = function () {
-    if (bannerTimer.current) {
-      clearTimeout(bannerTimer.current);
-      bannerTimer.current = null;
+  var startPulse = function (animVal, loopRef, toValue) {
+    if (loopRef.current) return;
+    loopRef.current = Animated.loop(
+      Animated.sequence([
+        Animated.timing(animVal, { toValue: toValue, duration: 600, useNativeDriver: true }),
+        Animated.timing(animVal, { toValue: 1, duration: 600, useNativeDriver: true }),
+      ])
+    );
+    loopRef.current.start();
+  };
+
+  var stopPulse = function (animVal, loopRef) {
+    if (loopRef.current) {
+      loopRef.current.stop();
+      loopRef.current = null;
     }
+    animVal.setValue(1);
+  };
+
+  // Banner'ı kapat (görev hâlâ "bekliyor" sayılır — buton rozeti atmaya devam eder)
+  var hideTaskAlert = function () {
+    stopPulse(iconPulse, iconLoopRef);
     Animated.timing(bannerAnim, { toValue: -160, duration: 250, useNativeDriver: true }).start(function () {
       setAlertTask(null);
     });
@@ -175,13 +201,16 @@ export default function CookScreen(props) {
 
   var showTaskAlert = function (task) {
     setAlertTask(task);
-    // Güçlü titreşim: haptic paterni + Android titreşim deseni
+    setHasPending(true);
+    // İki kanal: güçlü titreşim + ding sesi (sessiz ortamda görsel kaçmasın)
     celebrationPattern();
     Vibration.vibrate([0, 300, 150, 300]);
+    try { dingPlayer.seekTo(0); dingPlayer.play(); } catch (e) {}
     bannerAnim.setValue(-160);
     Animated.spring(bannerAnim, { toValue: 0, friction: 8, tension: 60, useNativeDriver: true }).start();
-    if (bannerTimer.current) clearTimeout(bannerTimer.current);
-    bannerTimer.current = setTimeout(hideTaskAlert, 8000);
+    // Banner kaybolmaz; ⚡ ikonu sürekli nabız atar (hareket = dikkat, renk patlaması yok)
+    startPulse(iconPulse, iconLoopRef, 1.25);
+    startPulse(badgePulse, badgeLoopRef, 1.35);
   };
 
   // Verilen adım numarasında (1-bazlı) tetiklenen görevi bul; ana görev öncelikli
@@ -241,7 +270,8 @@ export default function CookScreen(props) {
     return function () {
       clearTimeout(t);
       clearTimeout(firstTaskTimer);
-      if (bannerTimer.current) clearTimeout(bannerTimer.current);
+      stopPulse(iconPulse, iconLoopRef);
+      stopPulse(badgePulse, badgeLoopRef);
     };
   }, []);
 
@@ -294,6 +324,9 @@ export default function CookScreen(props) {
   var allDone = completedSteps.length === steps.length && steps.length > 0;
 
   var goToChallenger = function () {
+    // Görevler ekranı açıldı: bekleyen görev "görüldü" — buton nabzı/rozeti söner
+    setHasPending(false);
+    stopPulse(badgePulse, badgeLoopRef);
     navigation.navigate('Challenger', {
       cookName: cookName,
       challengerName: challengerName,
@@ -339,10 +372,15 @@ export default function CookScreen(props) {
               <Text style={styles.challengerButtonEmoji}>⚡</Text>
               <Text style={styles.challengerButtonText}>{t('cook.tasks')}</Text>
               {challengerTasks.length > 0 ? (
-                <View style={styles.taskBadge}>
-                  <Text style={styles.taskBadgeText}>{challengerTasks.length}</Text>
-                </View>
+                <Animated.View style={[
+                  styles.taskBadge,
+                  hasPending && styles.taskBadgePending,
+                  hasPending && { transform: [{ scale: badgePulse }] },
+                ]}>
+                  <Text style={[styles.taskBadgeText, hasPending && styles.taskBadgeTextPending]}>{challengerTasks.length}</Text>
+                </Animated.View>
               ) : null}
+              {hasPending ? <View style={styles.pendingDot} /> : null}
             </TouchableOpacity>
           </View>
 
@@ -478,9 +516,9 @@ export default function CookScreen(props) {
               goToChallenger();
             }}
           >
-            <View style={styles.taskAlertIconWrap}>
+            <Animated.View style={[styles.taskAlertIconWrap, { transform: [{ scale: iconPulse }] }]}>
               <Text style={styles.taskAlertEmoji}>⚡</Text>
-            </View>
+            </Animated.View>
             <View style={styles.taskAlertContent}>
               <Text style={styles.taskAlertTitle}>{t('cook.taskTime')}</Text>
               <Text style={styles.taskAlertDesc} numberOfLines={2}>
@@ -508,7 +546,10 @@ var styles = StyleSheet.create({
   challengerButtonEmoji: { fontSize: 16, marginRight: 5 },
   challengerButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   taskBadge: { backgroundColor: '#FFD93D', width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginLeft: 6 },
+  taskBadgePending: { backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: '#FFD93D' },
   taskBadgeText: { fontSize: 11, fontWeight: '800', color: COLORS.brown },
+  taskBadgeTextPending: { color: COLORS.primaryDark },
+  pendingDot: { position: 'absolute', top: 2, right: 2, width: 9, height: 9, borderRadius: 5, backgroundColor: '#FFD93D', borderWidth: 1.5, borderColor: COLORS.primary },
   recipeName: { fontSize: 26, fontWeight: '800', color: '#FFFFFF', marginBottom: 4 },
   recipeDesc: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginBottom: 10 },
   infoRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
