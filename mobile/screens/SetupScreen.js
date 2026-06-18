@@ -30,7 +30,9 @@ function CharacterCard(props) {
   var onChangeName = props.onChangeName;
   var animDelay = props.animDelay;
   var accentColor = props.accentColor;
-  var t = useLang().t;
+  var lc = useLang();
+  var t = lc.t;
+  var lang = lc.lang;
 
   var breathAnim = useRef(new Animated.Value(0)).current;
   var shakeAnim = useRef(new Animated.Value(0)).current;
@@ -101,9 +103,10 @@ function CharacterCard(props) {
         </View>
 
         <TextInput
+          key={'name-' + lang}
           style={[styles.nameInput, { borderColor: accentColor + '40' }]}
           placeholder={t('setup.namePlaceholder')}
-          placeholderTextColor="#B0A090"
+          placeholderTextColor="#9A8A78"
           value={name}
           onChangeText={onChangeName}
           maxLength={15}

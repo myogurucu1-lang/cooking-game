@@ -1,7 +1,19 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Localization from 'expo-localization';
 
 var STORAGE_KEY = 'appLanguage';
+
+// Cihaz dili Türkçe değilse İngilizce başlat (ilk açılışta)
+function detectDeviceLang() {
+  try {
+    var locales = Localization.getLocales();
+    if (locales && locales.length && locales[0] && locales[0].languageCode) {
+      return locales[0].languageCode === 'tr' ? 'tr' : 'en';
+    }
+  } catch (e) {}
+  return 'tr';
+}
 
 var translations = {
   tr: {
@@ -351,8 +363,14 @@ export function LanguageProvider(props) {
     AsyncStorage.getItem(STORAGE_KEY)
       .then(function (saved) {
         if (saved === 'en' || saved === 'tr') {
+          // Kullanıcı daha önce manuel seçmiş → ona saygı duy
           currentLang = saved;
           setLangState(saved);
+        } else {
+          // İlk açılış → cihaz diline göre başlat (TR değilse EN)
+          var dev = detectDeviceLang();
+          currentLang = dev;
+          setLangState(dev);
         }
       })
       .catch(function () {});
