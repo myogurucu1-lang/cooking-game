@@ -194,6 +194,13 @@ export default function TransitionScreen(props) {
       } catch (error) {
         if (!isMounted) return;
         console.log('❌ Fetch hatası:', error.message);
+        // Geçersiz/uygunsuz malzeme: özel mesaj, tekrar denemenin anlamı yok
+        if (error.message === 'invalid_ingredients') {
+          Alert.alert(t('trans.invalidTitle'), t('trans.invalidIngredients'), [
+            { text: t('trans.back'), onPress: function () { navigation.goBack(); } },
+          ]);
+          return;
+        }
         var friendly = error.message || '';
         if (!friendly || friendly.indexOf('Network request failed') !== -1) {
           friendly = t('trans.unreachable');

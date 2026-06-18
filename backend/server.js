@@ -76,6 +76,21 @@ app.use('/api/', (req, res, next) => {
   next();
 });
 
+// Açıkça uygunsuz/küfür içeren girdileri AI'a göndermeden, anında ele.
+// (Yiyecek olmayan "sandalye/masa" gibi girdileri prompt içindeki geçerlilik kuralı yakalar.)
+const BLOCKED_WORDS = [
+  'yarrak', 'yarak', 'sik', 'siktir', 'amcik', 'amina', 'amina', 'orospu', 'oruspu',
+  'pic', 'kahpe', 'pezevenk', 'gavat', 'ibne', 'oc', 'got', 'siceyim', 'siciim', 'bok',
+  'fuck', 'shit', 'dick', 'pussy', 'cock', 'bitch', 'asshole', 'cunt', 'porn', 'sex',
+];
+function containsBlockedContent(text) {
+  let norm = String(text).toLowerCase()
+    .replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c');
+  const tokens = norm.split(/[^a-z]+/).filter(Boolean);
+  return tokens.some((tok) => BLOCKED_WORDS.indexOf(tok) !== -1);
+}
+
 // Girdi doğrulama: tip + uzunluk sınırları (prompt şişirme/injection yüzeyini daraltır)
 function validateRecipeInput(body) {
   const isStr = (v, max) => typeof v === 'string' && v.trim().length > 0 && v.length <= max;
@@ -101,6 +116,11 @@ app.post('/api/recipe', async (req, res) => {
       return res.status(400).json({ error: validationError });
     }
 
+    // Küfür/uygunsuz girdi → AI'a hiç gitmeden reddet
+    if (containsBlockedContent(ingredients)) {
+      return res.status(400).json({ error: 'invalid_ingredients' });
+    }
+
     // PII maskeleme: isimler loglanmaz
     console.log('🤖 AI İsteği:', { ingredients: ingredients.substring(0, 60), difficulty, attemptNumber, prevRecipes: (previousRecipes || []).length, prevTasks: (previousTasks || []).length });
 
@@ -123,6 +143,7 @@ app.post('/api/recipe', async (req, res) => {
     // AI bazen bozuk/eksik JSON döndürebiliyor: 2 deneme hakkı ver
     let parsedData = null;
     let lastError = null;
+    let invalidInput = false;
     for (let attempt = 1; attempt <= 2 && !parsedData && !clientGone; attempt++) {
       try {
         const result = await model.generateContent(prompt);
@@ -131,6 +152,12 @@ app.post('/api/recipe', async (req, res) => {
 
         const cleanJson = extractJSON(fullText);
         const candidate = JSON.parse(cleanJson);
+
+        // AI girdiyi geçersiz buldu (yiyecek değil / uygunsuz) → tarif üretmedi
+        if (candidate.invalid === true) {
+          invalidInput = true;
+          break;
+        }
 
         if (!candidate.recipe || !candidate.recipe.name || !Array.isArray(candidate.recipe.steps) || candidate.recipe.steps.length === 0) {
           throw new Error('Tarif alanları eksik');
@@ -152,6 +179,10 @@ app.post('/api/recipe', async (req, res) => {
     if (clientGone) {
       console.log('⏹️ İstemci vazgeçti, yanıt gönderilmedi');
       return;
+    }
+    if (invalidInput) {
+      console.log('🚫 Geçersiz girdi (yiyecek değil/uygunsuz)');
+      return res.status(400).json({ error: 'invalid_ingredients' });
     }
     if (!parsedData) throw lastError;
 
@@ -194,6 +225,11 @@ GİRDİLER:
 - Mod: ${difficulty}
 - Cook (pişiren): ${cookName}
 - Challenger (görev veren): ${challengerName}
+
+═══ ÖNCE GEÇERLİLİK KONTROLÜ (EN ÖNEMLİ) ═══
+Malzemeler gerçek, yenebilir YİYECEK olmalı. Eğer girdi yiyecek değilse (mobilya, eşya, nesne, yer, hayvan, soyut/saçma/alakasız kelimeler) VEYA küfür, cinsel, saldırgan ya da uygunsuz ifade içeriyorsa: KESİNLİKLE tarif ÜRETME. Bu durumda başka HİÇBİR ŞEY yazma, SADECE şu JSON'u döndür:
+{"invalid": true}
+Örnek geçersiz girdiler: "sandalye, masa", "telefon", küfürlü kelimeler. Bunlardan asla yemek uydurma.
 
 ═══ MUTLAK KURALLAR (ÇİĞNENEMEZ) ═══
 
@@ -265,6 +301,11 @@ INPUTS:
 - Mode: ${difficulty}
 - Cook (the one cooking): ${cookName}
 - Challenger (the one giving tasks): ${challengerName}
+
+═══ VALIDITY CHECK FIRST (MOST IMPORTANT) ═══
+The ingredients must be real, edible FOOD. If the input is not food (furniture, objects, places, animals, abstract/nonsense/irrelevant words) OR contains profanity, sexual, offensive or inappropriate language: DO NOT generate a recipe. In that case write NOTHING else, return ONLY this JSON:
+{"invalid": true}
+Example invalid inputs: "chair, table", "phone", swear words. Never invent a dish from these.
 
 ═══ ABSOLUTE RULES (NON-NEGOTIABLE) ═══
 

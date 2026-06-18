@@ -42,6 +42,8 @@ var translations = {
     'trans.timeout': 'Bağlantı zaman aşımına uğradı.',
     'trans.badResponse': 'Sunucudan beklenmeyen yanıt geldi.',
     'trans.failed': 'Tarif oluşturulamadı.',
+    'trans.invalidTitle': 'Geçersiz Malzeme',
+    'trans.invalidIngredients': 'Lütfen gerçek yiyecek malzemeleri gir.\nÖrn: makarna, domates, tavuk, soğan.',
     'trans.back': 'Geri Dön',
     'trans.retry': 'Tekrar Dene',
 
@@ -195,6 +197,8 @@ var translations = {
     'trans.timeout': 'The connection timed out.',
     'trans.badResponse': 'Unexpected response from the server.',
     'trans.failed': 'Could not create a recipe.',
+    'trans.invalidTitle': 'Invalid Ingredients',
+    'trans.invalidIngredients': 'Please enter real food ingredients.\nE.g. pasta, tomato, chicken, onion.',
     'trans.back': 'Go Back',
     'trans.retry': 'Try Again',
 

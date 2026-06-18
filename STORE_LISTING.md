@@ -51,8 +51,8 @@ Yemeğinin fotoğrafını çek, rozetler kazan, birbirinizi puanlayın ve tüm m
 • Yapay zekâ destekli gerçek tarifler
 • Onlarca farklı eğlenceli görev
 • İki kişilik, telefon el değiştirerek oynanır
-• Reklamsız, üyeliksiz
-• Türkçe arayüz
+• Türkçe ve İngilizce dil desteği
+• Üyelik gerektirmez
 
 Haydi mutfağa! Birlikte pişir, birlikte eğlen. 🎉
 ```
@@ -83,8 +83,8 @@ Take a photo of your dish, earn badges, rate each other, and keep all your adven
 • AI-powered real recipes
 • Dozens of fun tasks
 • Two-player, pass-the-phone play
-• No ads, no sign-up
-• Turkish interface
+• Turkish and English language support
+• No sign-up required
 
 Get into the kitchen! Cook together, laugh together. 🎉
 ```
