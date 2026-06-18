@@ -79,9 +79,15 @@ app.use('/api/', (req, res, next) => {
 // Açıkça uygunsuz/küfür içeren girdileri AI'a göndermeden, anında ele.
 // (Yiyecek olmayan "sandalye/masa" gibi girdileri prompt içindeki geçerlilik kuralı yakalar.)
 const BLOCKED_WORDS = [
-  'yarrak', 'yarak', 'sik', 'siktir', 'amcik', 'amina', 'amina', 'orospu', 'oruspu',
-  'pic', 'kahpe', 'pezevenk', 'gavat', 'ibne', 'oc', 'got', 'siceyim', 'siciim', 'bok',
+  // Türkçe (girdi normalize edilir: ı→i, ş→s, ğ→g, ü→u, ö→o, ç→c)
+  'yarrak', 'yarak', 'yarrag', 'yaragi', 'sik', 'siktir', 'sikis', 'sikim', 'sikeyim',
+  'am', 'amcik', 'amina', 'amik', 'aminako', 'amini', 'orospu', 'oruspu', 'orospucocugu',
+  'pic', 'kahpe', 'pezevenk', 'gavat', 'kavat', 'ibne', 'ibik', 'oc', 'got', 'gotveren',
+  'bok', 'boktan', 'pipi', 'pippi', 'tassak', 'dalyarak', 'penis', 'vajina', 'porno',
+  'surtuk', 'kaltak', 'meme', 'siciim', 'siceyim',
+  // English
   'fuck', 'shit', 'dick', 'pussy', 'cock', 'bitch', 'asshole', 'cunt', 'porn', 'sex',
+  'vagina', 'tits', 'boobs', 'fag', 'nigger',
 ];
 function containsBlockedContent(text) {
   let norm = String(text).toLowerCase()
@@ -229,7 +235,8 @@ GİRDİLER:
 ═══ ÖNCE GEÇERLİLİK KONTROLÜ (EN ÖNEMLİ) ═══
 Malzemeler gerçek, yenebilir YİYECEK olmalı. Eğer girdi yiyecek değilse (mobilya, eşya, nesne, yer, hayvan, soyut/saçma/alakasız kelimeler) VEYA küfür, cinsel, saldırgan ya da uygunsuz ifade içeriyorsa: KESİNLİKLE tarif ÜRETME. Bu durumda başka HİÇBİR ŞEY yazma, SADECE şu JSON'u döndür:
 {"invalid": true}
-Örnek geçersiz girdiler: "sandalye, masa", "telefon", küfürlü kelimeler. Bunlardan asla yemek uydurma.
+Örnek geçersiz girdiler: "sandalye, masa", "telefon", "am", "pipi", küfürlü/müstehcen kelimeler. Bunlardan asla yemek uydurma.
+AYRICA: Girdi tek bir belirsiz/anlamsız kelimeyse veya gerçek bir yiyecek malzemesi içermiyorsa da {"invalid": true} döndür. Kullanıcının YAZMADIĞI malzemeyi (sucuk, domates vb.) ASLA kendin uydurup ekleme — girdide olmayan malzemeyle tarif YAPMA.
 
 ═══ MUTLAK KURALLAR (ÇİĞNENEMEZ) ═══
 
@@ -305,7 +312,8 @@ INPUTS:
 ═══ VALIDITY CHECK FIRST (MOST IMPORTANT) ═══
 The ingredients must be real, edible FOOD. If the input is not food (furniture, objects, places, animals, abstract/nonsense/irrelevant words) OR contains profanity, sexual, offensive or inappropriate language: DO NOT generate a recipe. In that case write NOTHING else, return ONLY this JSON:
 {"invalid": true}
-Example invalid inputs: "chair, table", "phone", swear words. Never invent a dish from these.
+Example invalid inputs: "chair, table", "phone", profane/obscene words. Never invent a dish from these.
+ALSO: If the input is a single vague/nonsense word or does not contain a real food ingredient, return {"invalid": true}. NEVER invent ingredients the user did NOT write (e.g. sausage, tomato) — do not make a recipe with ingredients that are not in the input.
 
 ═══ ABSOLUTE RULES (NON-NEGOTIABLE) ═══
 
