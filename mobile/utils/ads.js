@@ -13,12 +13,12 @@ import { TestIds } from 'react-native-google-mobile-ads';
 var USE_TEST_ADS = true;
 
 var REAL_BANNER = {
-  android: 'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX',
-  ios: 'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX',
+  android: 'ca-app-pub-2603931978234460/7064153679',
+  ios: 'ca-app-pub-2603931978234460/7064153679', // iOS ayrı birim açılınca güncellenecek
 };
 var REAL_INTERSTITIAL = {
-  android: 'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX',
-  ios: 'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX',
+  android: 'ca-app-pub-2603931978234460/9870546344',
+  ios: 'ca-app-pub-2603931978234460/9870546344', // iOS ayrı birim açılınca güncellenecek
 };
 
 function pick(real) {
