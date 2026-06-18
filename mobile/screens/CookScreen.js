@@ -172,7 +172,7 @@ export default function CookScreen(props) {
   var challengerButtonRef = useRef(null);
   var rootRef = useRef(null);
   var headerAnim = useRef(new Animated.Value(0)).current;
-  var bannerAnim = useRef(new Animated.Value(-160)).current;
+  var bannerAnim = useRef(new Animated.Value(-300)).current;
   var iconPulse = useRef(new Animated.Value(1)).current;   // banner ⚡ ikonu nabzı
   var badgePulse = useRef(new Animated.Value(1)).current;  // buton rozeti nabzı
   var iconLoopRef = useRef(null);
@@ -201,7 +201,7 @@ export default function CookScreen(props) {
   // Banner'ı kapat (görev hâlâ "bekliyor" sayılır — buton rozeti atmaya devam eder)
   var hideTaskAlert = function () {
     stopPulse(iconPulse, iconLoopRef);
-    Animated.timing(bannerAnim, { toValue: -160, duration: 250, useNativeDriver: true }).start(function () {
+    Animated.timing(bannerAnim, { toValue: -300, duration: 250, useNativeDriver: true }).start(function () {
       setAlertTask(null);
     });
   };
@@ -213,7 +213,7 @@ export default function CookScreen(props) {
     celebrationPattern();
     Vibration.vibrate([0, 300, 150, 300]);
     try { dingPlayer.seekTo(0); dingPlayer.play(); } catch (e) {}
-    bannerAnim.setValue(-160);
+    bannerAnim.setValue(-300);
     Animated.spring(bannerAnim, { toValue: 0, friction: 8, tension: 60, useNativeDriver: true }).start();
     // Banner kaybolmaz; ⚡ ikonu sürekli nabız atar (hareket = dikkat, renk patlaması yok)
     startPulse(iconPulse, iconLoopRef, 1.25);
@@ -553,7 +553,7 @@ export default function CookScreen(props) {
             </Animated.View>
             <View style={styles.taskAlertContent}>
               <Text style={styles.taskAlertTitle}>{t('cook.taskTime')}</Text>
-              <Text style={styles.taskAlertDesc} numberOfLines={2}>
+              <Text style={styles.taskAlertDesc} numberOfLines={3}>
                 {t('cook.taskHandoff', { title: (alertTask.triggerAtStep ? t('cook.stepPrefix', { n: alertTask.triggerAtStep }) : '') + alertTask.title, challenger: challengerName })}
               </Text>
             </View>
@@ -635,13 +635,13 @@ var styles = StyleSheet.create({
   finishTextDisabled: { color: '#666666', fontSize: 14 },
 
   taskAlert: { position: 'absolute', left: 10, right: 10, zIndex: 500 },
-  taskAlertInner: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.secondaryDark, borderRadius: 22, padding: 18, gap: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 16, elevation: 12, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
-  taskAlertIconWrap: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' },
-  taskAlertEmoji: { fontSize: 30 },
+  taskAlertInner: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.secondaryDark, borderRadius: 26, padding: 26, gap: 18, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 14, borderWidth: 2.5, borderColor: 'rgba(255,255,255,0.35)' },
+  taskAlertIconWrap: { width: 84, height: 84, borderRadius: 42, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' },
+  taskAlertEmoji: { fontSize: 46 },
   taskAlertContent: { flex: 1 },
-  taskAlertTitle: { fontSize: 18, fontWeight: '900', color: '#FFFFFF', marginBottom: 3 },
-  taskAlertDesc: { fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.92)', fontWeight: '600' },
-  taskAlertClose: { padding: 4 },
+  taskAlertTitle: { fontSize: 25, fontWeight: '900', color: '#FFFFFF', marginBottom: 5 },
+  taskAlertDesc: { fontSize: 17, lineHeight: 24, color: 'rgba(255,255,255,0.92)', fontWeight: '600' },
+  taskAlertClose: { padding: 6 },
 
   emptySteps: { alignItems: 'center', padding: 32, backgroundColor: COLORS.white, borderRadius: 18, borderWidth: 1, borderColor: COLORS.border },
   emptyStepsEmoji: { fontSize: 44, marginBottom: 10 },
