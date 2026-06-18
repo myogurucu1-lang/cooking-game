@@ -44,12 +44,17 @@
         }
       ],
       "expo-font",
-      "expo-asset"
+      "expo-asset",
+      "react-native-google-mobile-ads"
     ],
     "extra": {
       "eas": {
         "projectId": "be4ec699-eb1b-4031-85ed-9070df3f6028"
       }
     }
+  },
+  "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-3940256099942544~3347511713",
+    "ios_app_id": "ca-app-pub-3940256099942544~1458002511"
   }
 }

@@ -13,6 +13,8 @@ import { useAudioPlayer } from 'expo-audio';
 import { fireSource, dingSource } from '../utils/SoundManager';
 import { mediumTap, lightTap, celebrationPattern } from '../utils/HapticManager';
 import { useLang } from '../i18n';
+import { BannerAd, BannerAdSize, InterstitialAd, AdEventType } from 'react-native-google-mobile-ads';
+import { bannerAdUnitId, interstitialAdUnitId } from '../utils/ads';
 
 var screenWidth = Dimensions.get('window').width;
 var screenHeight = Dimensions.get('window').height;
@@ -178,6 +180,9 @@ export default function CookScreen(props) {
   var iconLoopRef = useRef(null);
   var badgeLoopRef = useRef(null);
   var pendingFirstTaskRef = useRef(null);  // 1. adım görevi — tutorial ile çakışmasın diye bekletilir
+  var interstitialRef = useRef(null);
+  var interstitialLoadedRef = useRef(false);
+  var pendingResultRef = useRef(null);     // "Yemeği Bitir" sonrası Result parametreleri
 
   var startPulse = function (animVal, loopRef, toValue) {
     if (loopRef.current) return;
@@ -298,6 +303,25 @@ export default function CookScreen(props) {
     };
   }, []);
 
+  // Geçiş reklamı (interstitial): ekran açılınca önceden yükle, "Yemeği Bitir"de göster
+  useEffect(function () {
+    var interstitial = InterstitialAd.createForAdRequest(interstitialAdUnitId);
+    interstitialRef.current = interstitial;
+    var unsubLoaded = interstitial.addAdEventListener(AdEventType.LOADED, function () {
+      interstitialLoadedRef.current = true;
+    });
+    var goResult = function () {
+      interstitialLoadedRef.current = false;
+      if (pendingResultRef.current) navigation.replace('Result', pendingResultRef.current);
+    };
+    var unsubClosed = interstitial.addAdEventListener(AdEventType.CLOSED, goResult);
+    var unsubError = interstitial.addAdEventListener(AdEventType.ERROR, function () {
+      interstitialLoadedRef.current = false;
+    });
+    try { interstitial.load(); } catch (e) {}
+    return function () { unsubLoaded(); unsubClosed(); unsubError(); };
+  }, []);
+
   // Oyun ortasında çıkışta onay iste (Android donanım geri tuşu dahil).
   // "Yemeği Bitir" navigation.replace kullanır (REPLACE) — ona karışma.
   useEffect(function () {
@@ -359,7 +383,7 @@ export default function CookScreen(props) {
   };
 
   var finishGame = function () {
-    navigation.replace('Result', {
+    pendingResultRef.current = {
       cookName: cookName,
       challengerName: challengerName,
       difficulty: difficulty,
@@ -368,7 +392,15 @@ export default function CookScreen(props) {
       completedSteps: completedSteps.length,
       totalTasks: challengerTasks.length,
       prepTime: recipeData && recipeData.prepTime ? recipeData.prepTime : '',
-    });
+    };
+    // Reklam hazırsa göster (kapanınca Result'a geçer); değilse direkt geç
+    if (interstitialLoadedRef.current && interstitialRef.current) {
+      try {
+        interstitialRef.current.show();
+        return;
+      } catch (e) {}
+    }
+    navigation.replace('Result', pendingResultRef.current);
   };
 
   return (
@@ -520,6 +552,11 @@ export default function CookScreen(props) {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Sabit alt banner reklamı */}
+      <View style={styles.adBar}>
+        <BannerAd unitId={bannerAdUnitId} size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER} />
+      </View>
       </View>
 
       {/* Spotlight Tutorial - SafeAreaView DIŞINDA: top:0 == ekran tepesi olsun ki
@@ -570,6 +607,7 @@ export default function CookScreen(props) {
 var styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   safeArea: { flex: 1 },
+  adBar: { alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.background, borderTopWidth: 1, borderTopColor: COLORS.border, minHeight: 50 },
   header: { paddingBottom: 18, paddingHorizontal: 20, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, ...SHADOW_SOFT },
   headerContent: {},
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
