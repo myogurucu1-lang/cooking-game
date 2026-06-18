@@ -50,6 +50,9 @@ var translations = {
     // Cook
     'cook.greeting': 'Haydi {cook}, başlayalım!',
     'cook.tasks': 'Görevler',
+    'cook.taskArrived': 'Görev geldi!',
+    'cook.stepHint': 'Her adımı bitirince karta dokun ✓',
+    'cook.tapDone': 'dokun',
     'cook.ingredients': 'Malzemeler',
     'cook.steps': 'Tarif Adımları',
     'cook.finish': 'Yemeği Bitir!',
@@ -205,6 +208,9 @@ var translations = {
     // Cook
     'cook.greeting': "Let's go {cook}, let's start!",
     'cook.tasks': 'Tasks',
+    'cook.taskArrived': 'New task!',
+    'cook.stepHint': 'Tap each step card when you finish it ✓',
+    'cook.tapDone': 'tap',
     'cook.ingredients': 'Ingredients',
     'cook.steps': 'Recipe Steps',
     'cook.finish': 'Finish the Dish!',

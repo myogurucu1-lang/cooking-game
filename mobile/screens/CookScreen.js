@@ -23,6 +23,7 @@ function StepCard(props) {
   var isActive = props.isActive;
   var isCompleted = props.isCompleted;
   var onToggle = props.onToggle;
+  var t = props.t;
 
   var scaleAnim = useRef(new Animated.Value(0.9)).current;
   var opacityAnim = useRef(new Animated.Value(0)).current;
@@ -88,12 +89,17 @@ function StepCard(props) {
           ) : null}
         </View>
 
-        <Ionicons
-          name={isCompleted ? "checkmark-circle" : "chevron-forward"}
-          size={20}
-          color={isCompleted ? COLORS.success : COLORS.textMuted}
-          style={{ marginLeft: 8 }}
-        />
+        {/* Net "tamamla" işareti: boş daire = dokunup işaretle, dolu ✓ = bitti */}
+        <View style={styles.checkArea}>
+          {isCompleted ? (
+            <Ionicons name="checkmark-circle" size={30} color={COLORS.success} />
+          ) : (
+            <View style={[styles.checkCircle, isActive && styles.checkCircleActive]} />
+          )}
+          {isActive && !isCompleted ? (
+            <Text style={styles.checkHint}>{t ? t('cook.tapDone') : 'dokun'}</Text>
+          ) : null}
+        </View>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -380,25 +386,24 @@ export default function CookScreen(props) {
               <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
             </TouchableOpacity>
 
-            <TouchableOpacity
-              ref={challengerButtonRef}
-              onPress={goToChallenger}
-              onLayout={measureChallengerButton}
-              style={styles.challengerButton}
-            >
-              <Text style={styles.challengerButtonEmoji}>⚡</Text>
-              <Text style={styles.challengerButtonText}>{t('cook.tasks')}</Text>
-              {challengerTasks.length > 0 ? (
-                <Animated.View style={[
-                  styles.taskBadge,
-                  hasPending && styles.taskBadgePending,
-                  hasPending && { transform: [{ scale: badgePulse }] },
-                ]}>
-                  <Text style={[styles.taskBadgeText, hasPending && styles.taskBadgeTextPending]}>{challengerTasks.length}</Text>
-                </Animated.View>
-              ) : null}
-              {hasPending ? <View style={styles.pendingDot} /> : null}
-            </TouchableOpacity>
+            <Animated.View style={hasPending ? { transform: [{ scale: badgePulse }] } : null}>
+              <TouchableOpacity
+                ref={challengerButtonRef}
+                onPress={goToChallenger}
+                onLayout={measureChallengerButton}
+                style={[styles.challengerButton, hasPending && styles.challengerButtonPending]}
+              >
+                <Text style={styles.challengerButtonEmoji}>⚡</Text>
+                <Text style={[styles.challengerButtonText, hasPending && styles.challengerButtonTextPending]}>
+                  {hasPending ? t('cook.taskArrived') : t('cook.tasks')}
+                </Text>
+                {challengerTasks.length > 0 ? (
+                  <View style={[styles.taskBadge, hasPending && styles.taskBadgePending]}>
+                    <Text style={[styles.taskBadgeText, hasPending && styles.taskBadgeTextPending]}>{challengerTasks.length}</Text>
+                  </View>
+                ) : null}
+              </TouchableOpacity>
+            </Animated.View>
           </View>
 
           <Text style={styles.recipeName}>{recipeData && recipeData.name ? recipeData.name : 'Tarif'}</Text>
@@ -459,6 +464,13 @@ export default function CookScreen(props) {
             <Text style={styles.sectionTitle}>{t('cook.steps')}</Text>
           </View>
 
+          {steps.length > 0 ? (
+            <View style={styles.stepHintBox}>
+              <Ionicons name="hand-left-outline" size={15} color={COLORS.primary} />
+              <Text style={styles.stepHintText}>{t('cook.stepHint')}</Text>
+            </View>
+          ) : null}
+
           <View style={styles.stepsContainer}>
             {steps.map(function (step, index) {
               return (
@@ -469,6 +481,7 @@ export default function CookScreen(props) {
                   isActive={activeStep === index}
                   isCompleted={completedSteps.includes(index)}
                   onToggle={toggleStep}
+                  t={t}
                 />
               );
             })}
@@ -562,13 +575,14 @@ var styles = StyleSheet.create({
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   backButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   challengerButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
+  challengerButtonPending: { backgroundColor: '#FFD93D', shadowColor: '#FFD93D', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 10, elevation: 8 },
   challengerButtonEmoji: { fontSize: 16, marginRight: 5 },
   challengerButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  challengerButtonTextPending: { color: COLORS.brown, fontWeight: '900' },
   taskBadge: { backgroundColor: '#FFD93D', width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginLeft: 6 },
-  taskBadgePending: { backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: '#FFD93D' },
+  taskBadgePending: { backgroundColor: COLORS.primary },
   taskBadgeText: { fontSize: 11, fontWeight: '800', color: COLORS.brown },
-  taskBadgeTextPending: { color: COLORS.primaryDark },
-  pendingDot: { position: 'absolute', top: 2, right: 2, width: 9, height: 9, borderRadius: 5, backgroundColor: '#FFD93D', borderWidth: 1.5, borderColor: COLORS.primary },
+  taskBadgeTextPending: { color: '#FFFFFF' },
   recipeName: { fontSize: 26, fontWeight: '800', color: '#FFFFFF', marginBottom: 4 },
   recipeDesc: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginBottom: 10 },
   infoRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
@@ -592,8 +606,14 @@ var styles = StyleSheet.create({
   ingredientList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   ingredientChip: { backgroundColor: COLORS.white, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, ...SHADOW },
   ingredientText: { fontSize: 13, color: COLORS.text, fontWeight: '500' },
+  stepHintBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: COLORS.primaryLight, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255,107,53,0.18)' },
+  stepHintText: { flex: 1, fontSize: 13, fontWeight: '600', color: COLORS.primaryDark },
   stepsContainer: { gap: 10 },
   stepCard: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: COLORS.white, padding: 14, borderRadius: 16, borderWidth: 1.5, borderColor: COLORS.border, ...SHADOW },
+  checkArea: { alignItems: 'center', justifyContent: 'center', marginLeft: 8, width: 44 },
+  checkCircle: { width: 28, height: 28, borderRadius: 14, borderWidth: 2.5, borderColor: COLORS.border },
+  checkCircleActive: { borderColor: COLORS.primary },
+  checkHint: { fontSize: 9, fontWeight: '800', color: COLORS.primary, marginTop: 3, textTransform: 'uppercase' },
   stepCardActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryLight },
   stepCardCompleted: { borderColor: COLORS.success, backgroundColor: COLORS.successLight },
   stepNumber: { width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.background, alignItems: 'center', justifyContent: 'center', marginRight: 12, marginTop: 2, borderWidth: 1.5, borderColor: COLORS.border },
