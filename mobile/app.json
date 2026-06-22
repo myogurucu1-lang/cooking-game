@@ -46,7 +46,13 @@
       "expo-font",
       "expo-asset",
       "react-native-google-mobile-ads",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-tracking-transparency",
+        {
+          "userTrackingPermission": "Verileriniz, size daha alakalı reklamlar göstermek için kullanılacaktır."
+        }
+      ]
     ],
     "extra": {
       "eas": {
