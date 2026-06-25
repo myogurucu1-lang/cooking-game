@@ -59,17 +59,14 @@ app.use(cors());
 app.use(express.json({ limit: '10kb' }));
 
 // Gerçek istemci IP'si başına dakikada 30 istek — her kullanıcı kendi kovası.
-// Render proxy arkasında tüm trafik tek IP'den gelmesin diye X-Forwarded-For'un
-// ilk (gerçek istemci) IP'sini anahtar yapıyoruz.
+// 'trust proxy' açık olduğu için req.ip zaten X-Forwarded-For'daki gerçek
+// istemci IP'sini verir; varsayılan keyGenerator IPv6'yı da doğru ele alır
+// (özel keyGenerator IPv6 ValidationError'a yol açıyordu, kaldırıldı).
 const recipeLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
-    const xff = req.headers['x-forwarded-for'];
-    return xff ? String(xff).split(',')[0].trim() : req.ip;
-  },
   message: { error: 'Çok fazla istek. Lütfen biraz bekleyin.' },
 });
 app.use('/api/', recipeLimiter);
@@ -209,6 +206,13 @@ app.post('/api/recipe', async (req, res) => {
     const msg = String(error && error.message || '').toLowerCase();
     if (msg.includes('429') || msg.includes('quota') || msg.includes('overloaded') || msg.includes('503')) {
       return res.status(503).json({ error: 'Sistem şu an yoğun, lütfen birkaç dakika sonra tekrar deneyin.' });
+    }
+    // API key geçersiz/yetkisiz veya yapılandırma hatası: bunlar geçici değil,
+    // sunucu tarafı sorunudur. Net biçimde logla (Render loglarında görünür) ve
+    // istemciye "bizden kaynaklı, az sonra dene" mesajı dön.
+    if (msg.includes('api key') || msg.includes('api_key') || msg.includes('400 bad request') || msg.includes('permission') || msg.includes('403')) {
+      console.error('🔑 KRİTİK: Gemini API anahtarı geçersiz/yetkisiz olabilir — Render env GOOGLE_AI_API_KEY kontrol et.');
+      return res.status(503).json({ error: 'Sunucu şu an hizmet veremiyor, kısa süre sonra tekrar dene.' });
     }
     res.status(500).json({ error: 'Tarif oluşturulamadı' });
   }
