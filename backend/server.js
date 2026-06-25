@@ -129,12 +129,18 @@ app.get('/health', (req, res) => {
 // HAM yanıtını/hatasını döndürür. (app-secret ile korunur.) Kök nedeni
 // (faturalandırma/bölge/kısıtlama) tam hata metninden anlamak için geçici araç.
 app.get('/api/diag-gemini', async (req, res) => {
+  const key = process.env.GOOGLE_AI_API_KEY || '';
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    const result = await model.generateContent('ping');
-    res.json({ ok: true, text: String(result.response.text()).slice(0, 60) });
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(key);
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: 'ping' }] }] }),
+    });
+    const body = await r.text();
+    res.json({ status: r.status, body: body.slice(0, 1200) });
   } catch (e) {
-    res.json({ ok: false, error: String((e && e.message) || e).slice(0, 800) });
+    res.json({ fetchError: String((e && e.message) || e).slice(0, 600) });
   }
 });
 
