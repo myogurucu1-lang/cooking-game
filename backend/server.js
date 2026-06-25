@@ -125,6 +125,19 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Teşhis: Render'ın kendi IP'sinden Gemini'ye minimal bir çağrı yapıp Google'ın
+// HAM yanıtını/hatasını döndürür. (app-secret ile korunur.) Kök nedeni
+// (faturalandırma/bölge/kısıtlama) tam hata metninden anlamak için geçici araç.
+app.get('/api/diag-gemini', async (req, res) => {
+  try {
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const result = await model.generateContent('ping');
+    res.json({ ok: true, text: String(result.response.text()).slice(0, 60) });
+  } catch (e) {
+    res.json({ ok: false, error: String((e && e.message) || e).slice(0, 800) });
+  }
+});
+
 app.post('/api/recipe', async (req, res) => {
   try {
     const { ingredients, difficulty, cookName, challengerName, variationSeed, attemptNumber, previousRecipes, previousTasks } = req.body || {};
