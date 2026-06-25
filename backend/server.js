@@ -167,6 +167,26 @@ async function callRelay(prompt, thinkingBudget) {
   return data.text;
 }
 
+// Teşhis: Render'dan relay'e erişimi test et (yeni kod canlı mı + Render relay'i
+// görebiliyor mu). app-secret ile korunur.
+app.get('/api/diag-relay', async (req, res) => {
+  const base = (process.env.RELAY_URL || '').replace(/\/+$/, '');
+  const out = { codeVersion: 'relay-v1', relayUrlSet: !!base, relaySecretSet: !!process.env.RELAY_SECRET, fetchType: typeof fetch };
+  if (!base) return res.json(out);
+  try {
+    const r = await fetch(base + '/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-relay-key': process.env.RELAY_SECRET || '' },
+      body: JSON.stringify({ prompt: 'Sadece TAMAM yaz.', thinkingBudget: 0 }),
+    });
+    out.relayStatus = r.status;
+    out.relayBody = (await r.text()).slice(0, 200);
+  } catch (e) {
+    out.relayError = String((e && e.message) || e).slice(0, 200);
+  }
+  res.json(out);
+});
+
 app.post('/api/recipe', async (req, res) => {
   try {
     const { ingredients, difficulty, cookName, challengerName, variationSeed, attemptNumber, previousRecipes, previousTasks } = req.body || {};
