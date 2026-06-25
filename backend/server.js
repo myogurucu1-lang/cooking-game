@@ -58,12 +58,18 @@ app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json({ limit: '10kb' }));
 
-// IP başına dakikada 6 tarif isteği — Gemini kota/fatura koruması
+// Gerçek istemci IP'si başına dakikada 30 istek — her kullanıcı kendi kovası.
+// Render proxy arkasında tüm trafik tek IP'den gelmesin diye X-Forwarded-For'un
+// ilk (gerçek istemci) IP'sini anahtar yapıyoruz.
 const recipeLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 6,
+  max: 30,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => {
+    const xff = req.headers['x-forwarded-for'];
+    return xff ? String(xff).split(',')[0].trim() : req.ip;
+  },
   message: { error: 'Çok fazla istek. Lütfen biraz bekleyin.' },
 });
 app.use('/api/', recipeLimiter);
