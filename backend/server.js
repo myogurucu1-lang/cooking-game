@@ -130,18 +130,22 @@ app.get('/health', (req, res) => {
 // (faturalandırma/bölge/kısıtlama) tam hata metninden anlamak için geçici araç.
 app.get('/api/diag-gemini', async (req, res) => {
   const key = process.env.GOOGLE_AI_API_KEY || '';
-  try {
-    const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(key);
-    const r = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: 'ping' }] }] }),
-    });
-    const body = await r.text();
-    res.json({ status: r.status, body: body.slice(0, 1200) });
-  } catch (e) {
-    res.json({ fetchError: String((e && e.message) || e).slice(0, 600) });
-  }
+  const base = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+  const payload = JSON.stringify({ contents: [{ parts: [{ text: 'ping' }] }] });
+  const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
+  const tryFetch = async (label, url, headers) => {
+    try {
+      const r = await fetch(url, { method: 'POST', headers, body: payload });
+      const t = await r.text();
+      return { label, status: r.status, kind: t.indexOf('Error 403 (Forbidden)') !== -1 ? 'HTML-robot' : (t.indexOf('"candidates"') !== -1 ? 'OK-json' : 'other'), snippet: t.slice(0, 200) };
+    } catch (e) { return { label, error: String((e && e.message) || e).slice(0, 200) }; }
+  };
+  const results = [];
+  // A: query param ?key= (baseline)
+  results.push(await tryFetch('A_querykey', base + '?key=' + encodeURIComponent(key), { 'Content-Type': 'application/json' }));
+  // B: x-goog-api-key header + tarayıcı User-Agent
+  results.push(await tryFetch('B_header_ua', base, { 'Content-Type': 'application/json', 'x-goog-api-key': key, 'User-Agent': UA }));
+  res.json({ results });
 });
 
 app.post('/api/recipe', async (req, res) => {
