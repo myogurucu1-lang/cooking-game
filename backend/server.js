@@ -148,6 +148,25 @@ app.get('/api/diag-gemini', async (req, res) => {
   res.json({ results });
 });
 
+// Gemini çağrısını Cloud Run relay'e devret (Render IP'si Google tarafından
+// engelli; relay Google'ın ağında çalıştığı için çağrı oradan temiz çıkar).
+async function callRelay(prompt, thinkingBudget) {
+  const base = (process.env.RELAY_URL || '').replace(/\/+$/, '');
+  if (!base) throw new Error('RELAY_URL tanımlı değil');
+  const r = await fetch(base + '/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-relay-key': process.env.RELAY_SECRET || '' },
+    body: JSON.stringify({ prompt, thinkingBudget }),
+  });
+  if (!r.ok) {
+    const errText = await r.text();
+    throw new Error('relay ' + r.status + ': ' + String(errText).slice(0, 200));
+  }
+  const data = await r.json();
+  if (!data || typeof data.text !== 'string') throw new Error('relay boş/bozuk yanıt');
+  return data.text;
+}
+
 app.post('/api/recipe', async (req, res) => {
   try {
     const { ingredients, difficulty, cookName, challengerName, variationSeed, attemptNumber, previousRecipes, previousTasks } = req.body || {};
@@ -170,15 +189,8 @@ app.post('/api/recipe', async (req, res) => {
     let clientGone = false;
     res.on('close', () => { if (!res.writableEnded) clientGone = true; });
 
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash",
-      generationConfig: {
-        temperature: 0.8,
-        maxOutputTokens: 16384,
-        // Sef modu: iddiali tarif secimi icin dusunme butcesi ac; gundelik hizli kalsin
-        thinkingConfig: { thinkingBudget: difficulty === 'sef' ? 2048 : 0 },
-      }
-    });
+    // Sef modu: iddiali tarif secimi icin dusunme butcesi ac; gundelik hizli kalsin
+    const thinkingBudget = difficulty === 'sef' ? 2048 : 0;
 
     const prompt = buildPrompt(ingredients, difficulty, cookName, challengerName, variationSeed, attemptNumber, previousRecipes, previousTasks, language);
 
@@ -188,8 +200,7 @@ app.post('/api/recipe', async (req, res) => {
     let invalidInput = false;
     for (let attempt = 1; attempt <= 2 && !parsedData && !clientGone; attempt++) {
       try {
-        const result = await model.generateContent(prompt);
-        const fullText = result.response.text();
+        const fullText = await callRelay(prompt, thinkingBudget);
         console.log(`📝 AI RAW (deneme ${attempt}, ilk 300):`, fullText.substring(0, 300));
 
         const cleanJson = extractJSON(fullText);
