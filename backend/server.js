@@ -112,7 +112,17 @@ function validateRecipeInput(body) {
 }
 
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+  // Anahtar teşhisi: tam anahtarı ASLA göstermeyiz, sadece var mı + uzunluk +
+  // maskeli baş/son (Render env'inin doğru yüklendiğini uzaktan doğrulamak için)
+  const k = process.env.GOOGLE_AI_API_KEY || '';
+  res.json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    keyLoaded: k.length > 0,
+    keyLength: k.length,
+    keyPrefix: k ? k.slice(0, 3) : null,
+    keySuffix: k ? k.slice(-3) : null,
+  });
 });
 
 app.post('/api/recipe', async (req, res) => {
