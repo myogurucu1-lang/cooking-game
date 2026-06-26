@@ -125,68 +125,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Teşhis: Render'ın kendi IP'sinden Gemini'ye minimal bir çağrı yapıp Google'ın
-// HAM yanıtını/hatasını döndürür. (app-secret ile korunur.) Kök nedeni
-// (faturalandırma/bölge/kısıtlama) tam hata metninden anlamak için geçici araç.
-app.get('/api/diag-gemini', async (req, res) => {
-  const key = process.env.GOOGLE_AI_API_KEY || '';
-  const base = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
-  const payload = JSON.stringify({ contents: [{ parts: [{ text: 'ping' }] }] });
-  const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
-  const tryFetch = async (label, url, headers) => {
-    try {
-      const r = await fetch(url, { method: 'POST', headers, body: payload });
-      const t = await r.text();
-      return { label, status: r.status, kind: t.indexOf('Error 403 (Forbidden)') !== -1 ? 'HTML-robot' : (t.indexOf('"candidates"') !== -1 ? 'OK-json' : 'other'), snippet: t.slice(0, 200) };
-    } catch (e) { return { label, error: String((e && e.message) || e).slice(0, 200) }; }
-  };
-  const results = [];
-  // A: query param ?key= (baseline)
-  results.push(await tryFetch('A_querykey', base + '?key=' + encodeURIComponent(key), { 'Content-Type': 'application/json' }));
-  // B: x-goog-api-key header + tarayıcı User-Agent
-  results.push(await tryFetch('B_header_ua', base, { 'Content-Type': 'application/json', 'x-goog-api-key': key, 'User-Agent': UA }));
-  res.json({ results });
-});
-
-// Gemini çağrısını Cloud Run relay'e devret (Render IP'si Google tarafından
-// engelli; relay Google'ın ağında çalıştığı için çağrı oradan temiz çıkar).
-async function callRelay(prompt, thinkingBudget) {
-  const base = (process.env.RELAY_URL || '').replace(/\/+$/, '');
-  if (!base) throw new Error('RELAY_URL tanımlı değil');
-  const r = await fetch(base + '/generate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-relay-key': process.env.RELAY_SECRET || '' },
-    body: JSON.stringify({ prompt, thinkingBudget }),
-  });
-  if (!r.ok) {
-    const errText = await r.text();
-    throw new Error('relay ' + r.status + ': ' + String(errText).slice(0, 200));
-  }
-  const data = await r.json();
-  if (!data || typeof data.text !== 'string') throw new Error('relay boş/bozuk yanıt');
-  return data.text;
-}
-
-// Teşhis: Render'dan relay'e erişimi test et (yeni kod canlı mı + Render relay'i
-// görebiliyor mu). app-secret ile korunur.
-app.get('/api/diag-relay', async (req, res) => {
-  const base = (process.env.RELAY_URL || '').replace(/\/+$/, '');
-  const out = { codeVersion: 'relay-v1', relayUrlSet: !!base, relaySecretSet: !!process.env.RELAY_SECRET, fetchType: typeof fetch };
-  if (!base) return res.json(out);
-  try {
-    const r = await fetch(base + '/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-relay-key': process.env.RELAY_SECRET || '' },
-      body: JSON.stringify({ prompt: 'Sadece TAMAM yaz.', thinkingBudget: 0 }),
-    });
-    out.relayStatus = r.status;
-    out.relayBody = (await r.text()).slice(0, 200);
-  } catch (e) {
-    out.relayError = String((e && e.message) || e).slice(0, 200);
-  }
-  res.json(out);
-});
-
 app.post('/api/recipe', async (req, res) => {
   try {
     const { ingredients, difficulty, cookName, challengerName, variationSeed, attemptNumber, previousRecipes, previousTasks } = req.body || {};
@@ -209,8 +147,15 @@ app.post('/api/recipe', async (req, res) => {
     let clientGone = false;
     res.on('close', () => { if (!res.writableEnded) clientGone = true; });
 
-    // Sef modu: iddiali tarif secimi icin dusunme butcesi ac; gundelik hizli kalsin
-    const thinkingBudget = difficulty === 'sef' ? 2048 : 0;
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash",
+      generationConfig: {
+        temperature: 0.8,
+        maxOutputTokens: 16384,
+        // Sef modu: iddiali tarif secimi icin dusunme butcesi ac; gundelik hizli kalsin
+        thinkingConfig: { thinkingBudget: difficulty === 'sef' ? 2048 : 0 },
+      }
+    });
 
     const prompt = buildPrompt(ingredients, difficulty, cookName, challengerName, variationSeed, attemptNumber, previousRecipes, previousTasks, language);
 
@@ -220,7 +165,8 @@ app.post('/api/recipe', async (req, res) => {
     let invalidInput = false;
     for (let attempt = 1; attempt <= 2 && !parsedData && !clientGone; attempt++) {
       try {
-        const fullText = await callRelay(prompt, thinkingBudget);
+        const result = await model.generateContent(prompt);
+        const fullText = result.response.text();
         console.log(`📝 AI RAW (deneme ${attempt}, ilk 300):`, fullText.substring(0, 300));
 
         const cleanJson = extractJSON(fullText);
