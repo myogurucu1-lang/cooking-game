@@ -20,9 +20,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SHADOW, SHADOW_SOFT } from '../theme';
 import { useAudioPlayer } from 'expo-audio';
 import { dingSource } from '../utils/SoundManager';
-import { celebrationPattern, successNotification } from '../utils/HapticManager';
-import { useLang, getLanguage } from '../i18n';
-import { getResultScore, getRankTier, getRankLabel, pickVerdict } from '../utils/verdict';
+import { celebrationPattern } from '../utils/HapticManager';
+import { useLang } from '../i18n';
 
 var screenWidth = Dimensions.get('window').width;
 
@@ -178,22 +177,6 @@ export default function ResultScreen(props) {
   var totalTasks = route.params.totalTasks;
   var prepTime = route.params.prepTime;
 
-  // Skor + rütbe + komik jüri yorumu — bir kez hesaplanır (re-render'da sabit kalır)
-  var lang = getLanguage();
-  var resultRef = useRef((function () {
-    var tier = getRankTier(completedSteps, totalSteps);
-    return {
-      score: getResultScore(completedSteps, totalSteps, difficulty, totalTasks),
-      rank: getRankLabel(tier, lang),
-      verdict: pickVerdict(tier, lang, cookName, Date.now()),
-    };
-  })());
-  var result = resultRef.current;
-
-  var displayScoreState = useState(0);
-  var displayScore = displayScoreState[0];
-  var setDisplayScore = displayScoreState[1];
-
   var cookRatingState = useState(0);
   var cookRating = cookRatingState[0];
   var setCookRating = cookRatingState[1];
@@ -231,24 +214,6 @@ export default function ResultScreen(props) {
     celebrationPattern();
 
     saveToHistory();
-  }, []);
-
-  // Skor sayarak artsın (easeOut); bitince başarı titreşimi
-  useEffect(function () {
-    var target = result.score;
-    if (target <= 0) { setDisplayScore(0); return; }
-    var duration = 1300;
-    var startTime = Date.now();
-    var interval = setInterval(function () {
-      var progress = Math.min((Date.now() - startTime) / duration, 1);
-      var eased = 1 - Math.pow(1 - progress, 2);
-      setDisplayScore(Math.round(target * eased));
-      if (progress >= 1) {
-        clearInterval(interval);
-        successNotification();
-      }
-    }, 40);
-    return function () { clearInterval(interval); };
   }, []);
 
   var saveToHistory = async function () {
@@ -471,16 +436,6 @@ export default function ResultScreen(props) {
           <Animated.View style={{ opacity: subtitleAnim }}>
             <Text style={styles.celebrationRecipe}>{recipeName}</Text>
             <Text style={styles.celebrationSubtitle}>{t('res.subtitle', { cook: cookName, challenger: challengerName })}</Text>
-
-            <View style={styles.rankPill}>
-              <Text style={styles.rankEmoji}>{result.rank.emoji}</Text>
-              <Text style={styles.rankTitle}>{result.rank.title}</Text>
-            </View>
-
-            <View style={styles.scoreWrap}>
-              <Text style={styles.scoreValue}>{displayScore}</Text>
-              <Text style={styles.scoreLabel}>{t('res.scoreLabel')}</Text>
-            </View>
           </Animated.View>
         </LinearGradient>
 
@@ -489,14 +444,6 @@ export default function ResultScreen(props) {
           <StatItem icon="flash-outline" value={String(totalTasks)} label={t('res.statTask')} color={COLORS.secondary} />
           <StatItem icon="time-outline" value={prepTime || '—'} label={t('res.statTime')} color="#9B59B6" />
           <StatItem icon="restaurant-outline" value={difficulty === 'sef' ? t('setup.chef') : t('setup.everyday')} label={t('res.statDifficulty')} color="#E74C3C" />
-        </View>
-
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>{t('res.juryTitle')}</Text>
-          <View style={styles.juryCard}>
-            <Text style={styles.juryEmoji}>🎤</Text>
-            <Text style={styles.juryText}>{result.verdict}</Text>
-          </View>
         </View>
 
         <View style={styles.sectionContainer}>
@@ -572,22 +519,11 @@ var styles = StyleSheet.create({
   celebrationRecipe: { fontSize: 20, fontWeight: '700', color: 'rgba(93, 64, 55, 0.8)', textAlign: 'center', marginBottom: 4 },
   celebrationSubtitle: { fontSize: 15, color: 'rgba(93, 64, 55, 0.6)', textAlign: 'center' },
 
-  rankPill: { flexDirection: 'row', alignItems: 'center', alignSelf: 'center', gap: 8, marginTop: 14, paddingHorizontal: 16, paddingVertical: 7, borderRadius: 22, backgroundColor: 'rgba(93, 64, 55, 0.12)' },
-  rankEmoji: { fontSize: 22 },
-  rankTitle: { fontSize: 16, fontWeight: '900', color: COLORS.brown },
-  scoreWrap: { alignItems: 'center', marginTop: 12 },
-  scoreValue: { fontSize: 54, fontWeight: '900', color: COLORS.brown, letterSpacing: 1, lineHeight: 58 },
-  scoreLabel: { fontSize: 12, fontWeight: '800', color: 'rgba(93, 64, 55, 0.55)', letterSpacing: 4, marginTop: 2 },
-
   statsContainer: { flexDirection: 'row', justifyContent: 'space-around', paddingHorizontal: 16, paddingVertical: 20, marginTop: -16, marginHorizontal: 16, backgroundColor: '#FFFFFF', borderRadius: 20, ...SHADOW_SOFT },
   statItem: { alignItems: 'center', flex: 1 },
   statIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   statValue: { fontSize: 16, fontWeight: '800', color: COLORS.text, marginBottom: 2 },
   statLabel: { fontSize: 11, color: COLORS.textMuted, fontWeight: '600' },
-
-  juryCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, ...SHADOW },
-  juryEmoji: { fontSize: 36 },
-  juryText: { flex: 1, fontSize: 15, fontWeight: '600', color: COLORS.text, lineHeight: 22, fontStyle: 'italic' },
 
   sectionContainer: { marginTop: 24, paddingHorizontal: 16 },
   sectionTitle: { fontSize: 20, fontWeight: '800', color: '#FFFFFF', marginBottom: 14 },

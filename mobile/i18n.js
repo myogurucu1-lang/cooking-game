@@ -106,8 +106,6 @@ var translations = {
 
     // Result
     'res.title': 'Afiyet Olsun!',
-    'res.scoreLabel': 'PUAN',
-    'res.juryTitle': '🎤 Jüri Konuştu',
     'res.subtitle': '{cook} & {challenger} başardınız!',
     'res.statStep': 'Adım',
     'res.statTask': 'Görev',
@@ -266,8 +264,6 @@ var translations = {
 
     // Result
     'res.title': 'Bon Appétit!',
-    'res.scoreLabel': 'SCORE',
-    'res.juryTitle': '🎤 The Verdict',
     'res.subtitle': '{cook} & {challenger}, you did it!',
     'res.statStep': 'Steps',
     'res.statTask': 'Tasks',
