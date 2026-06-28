@@ -19,32 +19,47 @@ import { bannerAdUnitId, interstitialAdUnitId } from '../utils/ads';
 var screenWidth = Dimensions.get('window').width;
 var screenHeight = Dimensions.get('window').height;
 
-// Malzeme metnini "isim + ölçü" olarak ayır (kısaltmasız ölçüler korunur).
-// AI genelde "miktar + isim" döner (ör. "2 yemek kaşığı sıvı yağ"); ayrıştırılamazsa
-// tüm metin isim olarak gösterilir (kart yine düzgün görünür).
-var ING_UNITS = ['yemek kaşığı', 'tatlı kaşığı', 'çay kaşığı', 'su bardağı', 'çay bardağı', 'fincan', 'adet', 'gram', 'kilogram', 'kg', 'litre', 'mililitre', 'ml', 'tutam', 'diş', 'dal', 'demet', 'paket', 'kutu', 'dilim', 'baş', 'kase', 'avuç', 'bağ', 'top', 'silme', 'tepeleme', 'salkım'];
+// Malzeme metnini "isim + ölçü" olarak token bazlı ayır.
+// AI "miktar + isim" (ör. "200 gr makarna") veya "isim + miktar" döndürebilir; ikisi de doğru bölünür.
+// Token bazlı eşleşme: "kremalı" içindeki "ml" gibi yanlış kesmeleri önler. Kısaltmalar tam yazılır (gr -> gram).
+// {name, amount} nesnesi gelirse doğrudan kullanılır. Ayrıştırılamazsa tüm metin isim olur.
+var ING_UNITS = ['yemek kaşığı', 'tatlı kaşığı', 'çay kaşığı', 'su bardağı', 'çay bardağı', 'fincan', 'adet', 'gram', 'kilogram', 'litre', 'mililitre', 'gr', 'kg', 'ml', 'lt', 'tutam', 'diş', 'dal', 'demet', 'paket', 'kutu', 'dilim', 'baş', 'kase', 'avuç', 'bağ', 'top', 'salkım'];
+var ING_QTY = ['yarım', 'çeyrek', 'birkaç', 'bir', 'iki', 'üç', 'dört', 'beş', 'altı', 'yedi', 'sekiz', 'dokuz', 'on', 'az', 'biraz'];
+var UNIT_FULL = { gr: 'gram', gram: 'gram', kg: 'kilogram', ml: 'mililitre', lt: 'litre', l: 'litre' };
 function tcap(x) { x = String(x == null ? '' : x).trim(); return x ? (x.charAt(0).toLocaleUpperCase('tr-TR') + x.slice(1)) : x; }
+function expandUnits(a) {
+  return String(a == null ? '' : a).split(/\s+/).map(function (tok) {
+    return UNIT_FULL[tok.toLocaleLowerCase('tr-TR')] || tok;
+  }).join(' ').trim();
+}
+function isQtyToken(tok) {
+  return /^[\d]+([.,/]\d+)?$/.test(tok) || ING_QTY.indexOf(tok.toLocaleLowerCase('tr-TR')) !== -1;
+}
 function parseIngredient(raw) {
+  if (raw && typeof raw === 'object') {
+    return { name: tcap(raw.name || ''), amount: expandUnits(raw.amount || '') };
+  }
   var s = String(raw == null ? '' : raw).trim();
   if (!s) return { name: '', amount: '' };
-  var low = s.toLocaleLowerCase('tr-TR');
-  var pos = -1, unit = '';
-  for (var i = 0; i < ING_UNITS.length; i++) {
-    var idx = low.indexOf(ING_UNITS[i]);
-    if (idx !== -1 && (pos === -1 || idx < pos || (idx === pos && ING_UNITS[i].length > unit.length))) {
-      pos = idx; unit = ING_UNITS[i];
-    }
+  var toks = s.split(/\s+/);
+  var low = toks.map(function (x) { return x.toLocaleLowerCase('tr-TR'); });
+  var uStart = -1, uEnd = -1;
+  for (var i = 0; i < toks.length; i++) {
+    var two = (i + 1 < toks.length) ? (low[i] + ' ' + low[i + 1]) : null;
+    if (two && ING_UNITS.indexOf(two) !== -1) { uStart = i; uEnd = i + 2; break; }
+    if (ING_UNITS.indexOf(low[i]) !== -1) { uStart = i; uEnd = i + 1; break; }
   }
-  if (pos !== -1) {
-    var end = pos + unit.length;
-    var amount = s.slice(0, end).trim();
-    var name = s.slice(end).replace(/^[\s,;–-]+/, '').trim();
-    if (name) return { name: tcap(name), amount: amount };
-    var pre = s.slice(0, pos).replace(/[\s\d.,/½¼¾]+$/, '').trim();
-    return { name: tcap(pre || s), amount: amount };
+  if (uStart !== -1) {
+    var before = toks.slice(0, uStart);
+    var after = toks.slice(uEnd);
+    var q = [];
+    while (before.length && isQtyToken(before[before.length - 1])) { q.unshift(before.pop()); }
+    var amount = q.concat(toks.slice(uStart, uEnd)).join(' ');
+    var name = before.concat(after).join(' ').replace(/^[\s,;·–-]+|[\s,;·–-]+$/g, '').trim();
+    return { name: tcap(name || s), amount: expandUnits(amount) };
   }
-  var m = s.match(/^([\d]+[\d.,/]*)\s+(.+)$/);
-  if (m) return { name: tcap(m[2]), amount: m[1] };
+  var m = s.match(/^([\d]+([.,/]\d+)?)\s+(.+)$/);
+  if (m) return { name: tcap(m[3]), amount: expandUnits(m[1]) };
   return { name: tcap(s), amount: '' };
 }
 
