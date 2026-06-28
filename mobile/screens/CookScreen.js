@@ -19,6 +19,35 @@ import { bannerAdUnitId, interstitialAdUnitId } from '../utils/ads';
 var screenWidth = Dimensions.get('window').width;
 var screenHeight = Dimensions.get('window').height;
 
+// Malzeme metnini "isim + ölçü" olarak ayır (kısaltmasız ölçüler korunur).
+// AI genelde "miktar + isim" döner (ör. "2 yemek kaşığı sıvı yağ"); ayrıştırılamazsa
+// tüm metin isim olarak gösterilir (kart yine düzgün görünür).
+var ING_UNITS = ['yemek kaşığı', 'tatlı kaşığı', 'çay kaşığı', 'su bardağı', 'çay bardağı', 'fincan', 'adet', 'gram', 'kilogram', 'kg', 'litre', 'mililitre', 'ml', 'tutam', 'diş', 'dal', 'demet', 'paket', 'kutu', 'dilim', 'baş', 'kase', 'avuç', 'bağ', 'top', 'silme', 'tepeleme', 'salkım'];
+function tcap(x) { x = String(x == null ? '' : x).trim(); return x ? (x.charAt(0).toLocaleUpperCase('tr-TR') + x.slice(1)) : x; }
+function parseIngredient(raw) {
+  var s = String(raw == null ? '' : raw).trim();
+  if (!s) return { name: '', amount: '' };
+  var low = s.toLocaleLowerCase('tr-TR');
+  var pos = -1, unit = '';
+  for (var i = 0; i < ING_UNITS.length; i++) {
+    var idx = low.indexOf(ING_UNITS[i]);
+    if (idx !== -1 && (pos === -1 || idx < pos || (idx === pos && ING_UNITS[i].length > unit.length))) {
+      pos = idx; unit = ING_UNITS[i];
+    }
+  }
+  if (pos !== -1) {
+    var end = pos + unit.length;
+    var amount = s.slice(0, end).trim();
+    var name = s.slice(end).replace(/^[\s,;–-]+/, '').trim();
+    if (name) return { name: tcap(name), amount: amount };
+    var pre = s.slice(0, pos).replace(/[\s\d.,/½¼¾]+$/, '').trim();
+    return { name: tcap(pre || s), amount: amount };
+  }
+  var m = s.match(/^([\d]+[\d.,/]*)\s+(.+)$/);
+  if (m) return { name: tcap(m[2]), amount: m[1] };
+  return { name: tcap(s), amount: '' };
+}
+
 function StepCard(props) {
   var step = props.step;
   var index = props.index;
@@ -116,9 +145,13 @@ function IngredientChip(props) {
     Animated.timing(fadeAnim, { toValue: 1, duration: 300, delay: index * 50, useNativeDriver: true }).start();
   }, []);
 
+  var parsed = parseIngredient(ingredient);
   return (
-    <Animated.View style={[styles.ingredientChip, { opacity: fadeAnim }]}>
-      <Text style={styles.ingredientText}>{ingredient}</Text>
+    <Animated.View style={[styles.ingredientCard, { opacity: fadeAnim }]}>
+      <Text style={styles.ingredientName}>
+        {parsed.name}
+        {parsed.amount ? <Text style={styles.ingredientAmount}>  {parsed.amount}</Text> : null}
+      </Text>
     </Animated.View>
   );
 }
@@ -641,9 +674,10 @@ var styles = StyleSheet.create({
   sectionTitle: { fontSize: 18, fontWeight: '700', color: COLORS.text },
   countBadge: { backgroundColor: COLORS.primary, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
   countText: { fontSize: 12, fontWeight: '700', color: '#FFFFFF' },
-  ingredientList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  ingredientChip: { backgroundColor: COLORS.white, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, ...SHADOW },
-  ingredientText: { fontSize: 13, color: COLORS.text, fontWeight: '500' },
+  ingredientList: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  ingredientCard: { width: '48.5%', backgroundColor: COLORS.white, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, marginBottom: 10, shadowColor: '#7a5a40', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
+  ingredientName: { fontSize: 14, color: COLORS.text, fontWeight: '800', lineHeight: 19 },
+  ingredientAmount: { fontSize: 12.5, color: COLORS.primary, fontWeight: '800' },
   stepHintBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: COLORS.primaryLight, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255,107,53,0.18)' },
   stepHintText: { flex: 1, fontSize: 13, fontWeight: '600', color: COLORS.primaryDark },
   stepsContainer: { gap: 10 },

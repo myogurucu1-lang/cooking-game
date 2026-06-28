@@ -79,7 +79,7 @@ function ConfettiPiece(props) {
 }
 
 function BadgeCard(props) {
-  var emoji = props.emoji;
+  var icon = props.icon;
   var title = props.title;
   var subtitle = props.subtitle;
   var color = props.color;
@@ -90,7 +90,7 @@ function BadgeCard(props) {
   useEffect(function () {
     var timeout = setTimeout(function () {
       Animated.sequence([
-        Animated.spring(scaleAnim, { toValue: 1.15, friction: 4, tension: 80, useNativeDriver: true }),
+        Animated.spring(scaleAnim, { toValue: 1.08, friction: 4, tension: 80, useNativeDriver: true }),
         Animated.spring(scaleAnim, { toValue: 1, friction: 6, tension: 40, useNativeDriver: true }),
       ]).start();
     }, delay);
@@ -99,11 +99,13 @@ function BadgeCard(props) {
 
   return (
     <Animated.View style={[styles.badgeCard, { transform: [{ scale: scaleAnim }] }]}>
-      <View style={[styles.badgeIcon, { backgroundColor: color + '20' }]}>
-        <Text style={styles.badgeEmoji}>{emoji}</Text>
+      <View style={[styles.badgeIcon, { backgroundColor: color + '1A' }]}>
+        <Ionicons name={icon} size={20} color={color} />
       </View>
-      <Text style={styles.badgeTitle}>{title}</Text>
-      <Text style={styles.badgeSubtitle}>{subtitle}</Text>
+      <View style={styles.badgeTexts}>
+        <Text style={styles.badgeTitle} numberOfLines={1}>{title}</Text>
+        <Text style={styles.badgeSubtitle} numberOfLines={1}>{subtitle}</Text>
+      </View>
     </Animated.View>
   );
 }
@@ -113,29 +115,27 @@ function StarRating(props) {
   var playerName = props.playerName;
   var onRate = props.onRate;
   var rating = props.rating;
-  var t = useLang().t;
 
   return (
-    <View style={styles.ratingSection}>
-      <Text style={styles.ratingLabel}>{label}</Text>
-      <Text style={styles.ratingPlayer}>{playerName}</Text>
+    <View style={styles.rateRow}>
+      <View style={styles.rateLeft}>
+        <Text style={styles.rateLabel}>{label}</Text>
+        <Text style={styles.rateName} numberOfLines={1}>{playerName}</Text>
+      </View>
       <View style={styles.starsRow}>
         {[1, 2, 3, 4, 5].map(function (star) {
           return (
-            <TouchableOpacity key={star} onPress={function () { onRate(star); }} activeOpacity={0.7}>
+            <TouchableOpacity key={star} onPress={function () { onRate(star); }} activeOpacity={0.7} hitSlop={{ top: 6, bottom: 6, left: 2, right: 2 }}>
               <Ionicons
                 name={star <= rating ? 'star' : 'star-outline'}
-                size={36}
-                color={star <= rating ? '#FFD93D' : '#CCCCCC'}
+                size={26}
+                color={star <= rating ? '#FFC02E' : '#D8CCBC'}
                 style={styles.starIcon}
               />
             </TouchableOpacity>
           );
         })}
       </View>
-      {rating > 0 ? (
-        <Text style={styles.ratingText}>{t('res.rate' + rating)}</Text>
-      ) : null}
     </View>
   );
 }
@@ -154,9 +154,9 @@ function StatItem(props) {
   return (
     <Animated.View style={[styles.statItem, { opacity: fadeAnim }]}>
       <View style={[styles.statIcon, { backgroundColor: color + '18' }]}>
-        <Ionicons name={icon} size={20} color={color} />
+        <Ionicons name={icon} size={19} color={color} />
       </View>
-      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statValue} numberOfLines={1}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </Animated.View>
   );
@@ -354,28 +354,28 @@ export default function ResultScreen(props) {
   };
 
   var badges = [];
-  badges.push({ emoji: '👨‍🍳', title: t('res.badgeStarChef'), subtitle: cookName, color: COLORS.primary });
-  badges.push({ emoji: '⚡', title: t('res.badgeTaskMaster'), subtitle: challengerName, color: COLORS.secondary });
+  badges.push({ icon: 'star', title: t('res.badgeStarChef'), subtitle: cookName, color: COLORS.primary });
+  badges.push({ icon: 'flash', title: t('res.badgeTaskMaster'), subtitle: challengerName, color: COLORS.secondary });
   if (difficulty === 'sef') {
-    badges.push({ emoji: '🔥', title: t('res.badgeBraveChef'), subtitle: t('res.badgeBraveSub'), color: '#E74C3C' });
+    badges.push({ icon: 'flame', title: t('res.badgeBraveChef'), subtitle: t('res.badgeBraveSub'), color: '#E74C3C' });
   } else {
-    badges.push({ emoji: '⏱️', title: t('res.badgeFastHands'), subtitle: t('res.badgeFastSub'), color: '#3498DB' });
+    badges.push({ icon: 'timer-outline', title: t('res.badgeFastHands'), subtitle: t('res.badgeFastSub'), color: '#3498DB' });
   }
   if (completedSteps === totalSteps) {
-    badges.push({ emoji: '✅', title: t('res.badgePerfect'), subtitle: t('res.badgePerfectSub'), color: COLORS.success });
+    badges.push({ icon: 'ribbon', title: t('res.badgePerfect'), subtitle: t('res.badgePerfectSub'), color: COLORS.success });
   }
 
   var playAgain = function () {
     navigation.reset({ index: 0, routes: [{ name: 'Setup' }] });
   };
 
-  // Konfeti konum/gecikmeleri bir kez üretilir — re-render'da değişmez
+  // Konfeti konum/gecikmeleri bir kez üretilir — re-render'da değişmez (bol serpilsin)
   var confettiPieces = useRef((function () {
     var arr = [];
-    for (var i = 0; i < 30; i++) {
+    for (var i = 0; i < 46; i++) {
       arr.push({
         id: i,
-        delay: Math.random() * 1500,
+        delay: Math.random() * 1800,
         startX: Math.random() * screenWidth,
       });
     }
@@ -428,12 +428,14 @@ export default function ResultScreen(props) {
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        <LinearGradient colors={['#FFD93D', '#F4C430', '#E8B800']} style={[styles.celebrationHeader, { paddingTop: 40 + insets.top }]}>
-          <Animated.View style={{ opacity: titleAnim, transform: [{ scale: titleAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }) }] }}>
-            <Text style={styles.trophyEmoji}>🏆</Text>
+        <LinearGradient colors={[COLORS.primary, COLORS.primaryDark]} style={[styles.celebrationHeader, { paddingTop: 34 + insets.top }]}>
+          <Animated.View style={{ opacity: titleAnim, alignItems: 'center', transform: [{ scale: titleAnim.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }] }}>
+            <View style={styles.successIcon}>
+              <Ionicons name="restaurant" size={26} color="#FFFFFF" />
+            </View>
             <Text style={styles.celebrationTitle}>{t('res.title')}</Text>
           </Animated.View>
-          <Animated.View style={{ opacity: subtitleAnim }}>
+          <Animated.View style={{ opacity: subtitleAnim, alignItems: 'center' }}>
             <Text style={styles.celebrationRecipe}>{recipeName}</Text>
             <Text style={styles.celebrationSubtitle}>{t('res.subtitle', { cook: cookName, challenger: challengerName })}</Text>
           </Animated.View>
@@ -447,7 +449,10 @@ export default function ResultScreen(props) {
         </View>
 
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>{t('res.photoSection')}</Text>
+          <View style={styles.sectionHeaderRow}>
+            <Ionicons name="camera-outline" size={18} color={COLORS.primary} />
+            <Text style={styles.sectionTitle}>{t('res.photoSection')}</Text>
+          </View>
           {photoUri ? (
             <View style={styles.photoPreviewContainer}>
               <View style={styles.photoPreview}>
@@ -459,27 +464,38 @@ export default function ResultScreen(props) {
               </TouchableOpacity>
             </View>
           ) : (
-            <TouchableOpacity style={styles.photoButton} onPress={takePhoto} activeOpacity={0.8}>
-              <LinearGradient colors={['#FFF8F0', '#FFF0E5']} style={styles.photoButtonGradient}>
-                <Text style={styles.photoButtonEmoji}>📷</Text>
-                <Text style={styles.photoButtonText}>{t('res.takePhoto')}</Text>
-                <Text style={styles.photoButtonHint}>{t('res.photoHint')}</Text>
-              </LinearGradient>
+            <TouchableOpacity style={styles.photoCompact} onPress={takePhoto} activeOpacity={0.85}>
+              <View style={styles.photoCamIcon}>
+                <Ionicons name="camera" size={22} color={COLORS.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.photoCompactTitle}>{t('res.takePhoto')}</Text>
+                <Text style={styles.photoCompactHint}>{t('res.photoHint')}</Text>
+              </View>
+              <View style={styles.photoPlus}>
+                <Ionicons name="add" size={22} color="#FFFFFF" />
+              </View>
             </TouchableOpacity>
           )}
         </View>
 
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>{t('res.badges')}</Text>
+          <View style={styles.sectionHeaderRow}>
+            <Ionicons name="ribbon-outline" size={18} color={COLORS.primary} />
+            <Text style={styles.sectionTitle}>{t('res.badges')}</Text>
+          </View>
           <View style={styles.badgesGrid}>
             {badges.map(function (badge, index) {
-              return <BadgeCard key={index} emoji={badge.emoji} title={badge.title} subtitle={badge.subtitle} color={badge.color} delay={400 + index * 200} />;
+              return <BadgeCard key={index} icon={badge.icon} title={badge.title} subtitle={badge.subtitle} color={badge.color} delay={400 + index * 150} />;
             })}
           </View>
         </View>
 
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>{t('res.ratingSection')}</Text>
+          <View style={styles.sectionHeaderRow}>
+            <Ionicons name="star-outline" size={18} color={COLORS.primary} />
+            <Text style={styles.sectionTitle}>{t('res.ratingSection')}</Text>
+          </View>
           <View style={styles.ratingsContainer}>
             <StarRating label={t('res.cookPerf')} playerName={cookName} rating={cookRating} onRate={handleCookRating} />
             <View style={styles.ratingDivider} />
@@ -489,7 +505,7 @@ export default function ResultScreen(props) {
 
         <View style={styles.buttonsContainer}>
           <View style={styles.savedBadge}>
-            <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
+            <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
             <Text style={styles.savedText}>{t('res.saved')}</Text>
           </View>
 
@@ -501,66 +517,70 @@ export default function ResultScreen(props) {
           </TouchableOpacity>
         </View>
 
-        <View style={{ height: 50 }} />
+        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
 }
 
 var styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#2D1B12' },
+  container: { flex: 1, backgroundColor: COLORS.background },
   confettiContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10 },
   scrollView: { flex: 1 },
   scrollContent: { paddingBottom: 20 },
 
-  celebrationHeader: { alignItems: 'center', paddingTop: 40, paddingBottom: 30, paddingHorizontal: 20, borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
-  trophyEmoji: { fontSize: 70, textAlign: 'center', marginBottom: 10 },
-  celebrationTitle: { fontSize: 36, fontWeight: '900', color: COLORS.brown, textAlign: 'center', marginBottom: 8 },
-  celebrationRecipe: { fontSize: 20, fontWeight: '700', color: 'rgba(93, 64, 55, 0.8)', textAlign: 'center', marginBottom: 4 },
-  celebrationSubtitle: { fontSize: 15, color: 'rgba(93, 64, 55, 0.6)', textAlign: 'center' },
+  celebrationHeader: { alignItems: 'center', paddingBottom: 28, paddingHorizontal: 20, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, ...SHADOW_SOFT },
+  successIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  celebrationTitle: { fontSize: 32, fontWeight: '900', color: '#FFFFFF', textAlign: 'center', marginBottom: 8 },
+  celebrationRecipe: { fontSize: 18, fontWeight: '800', color: 'rgba(255,255,255,0.92)', textAlign: 'center', marginBottom: 3 },
+  celebrationSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.78)', textAlign: 'center', fontWeight: '600' },
 
-  statsContainer: { flexDirection: 'row', justifyContent: 'space-around', paddingHorizontal: 16, paddingVertical: 20, marginTop: -16, marginHorizontal: 16, backgroundColor: '#FFFFFF', borderRadius: 20, ...SHADOW_SOFT },
+  statsContainer: { flexDirection: 'row', justifyContent: 'space-around', paddingHorizontal: 12, paddingVertical: 18, marginTop: -16, marginHorizontal: 16, backgroundColor: '#FFFFFF', borderRadius: 20, ...SHADOW_SOFT },
   statItem: { alignItems: 'center', flex: 1 },
   statIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  statValue: { fontSize: 16, fontWeight: '800', color: COLORS.text, marginBottom: 2 },
+  statValue: { fontSize: 15, fontWeight: '800', color: COLORS.text, marginBottom: 2 },
   statLabel: { fontSize: 11, color: COLORS.textMuted, fontWeight: '600' },
 
-  sectionContainer: { marginTop: 24, paddingHorizontal: 16 },
-  sectionTitle: { fontSize: 20, fontWeight: '800', color: '#FFFFFF', marginBottom: 14 },
+  sectionContainer: { marginTop: 22, paddingHorizontal: 16 },
+  sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 12 },
+  sectionTitle: { fontSize: 17, fontWeight: '800', color: COLORS.text },
 
-  photoButton: { borderRadius: 18, overflow: 'hidden' },
-  photoButtonGradient: { alignItems: 'center', paddingVertical: 28, borderRadius: 18, borderWidth: 2, borderColor: 'rgba(255, 107, 53, 0.2)', borderStyle: 'dashed' },
-  photoButtonEmoji: { fontSize: 40, marginBottom: 8 },
-  photoButtonText: { fontSize: 17, fontWeight: '700', color: COLORS.primary, marginBottom: 4 },
-  photoButtonHint: { fontSize: 12, color: '#B0A090' },
+  // compact photo card
+  photoCompact: { flexDirection: 'row', alignItems: 'center', gap: 13, backgroundColor: '#FFFFFF', borderRadius: 16, paddingVertical: 13, paddingHorizontal: 15, borderWidth: 1.5, borderColor: 'rgba(255,107,53,0.22)', borderStyle: 'dashed' },
+  photoCamIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: 'rgba(255,107,53,0.12)', alignItems: 'center', justifyContent: 'center' },
+  photoCompactTitle: { fontSize: 15, fontWeight: '800', color: COLORS.primary },
+  photoCompactHint: { fontSize: 12, color: COLORS.textMuted, fontWeight: '600', marginTop: 1 },
+  photoPlus: { width: 30, height: 30, borderRadius: 15, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center' },
   photoPreviewContainer: { alignItems: 'center' },
   photoPreview: { width: '100%', height: 200, borderRadius: 18, overflow: 'hidden', marginBottom: 10 },
   photoImage: { width: '100%', height: '100%', resizeMode: 'cover' },
-  retakeButton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.1)' },
-  retakeText: { fontSize: 13, fontWeight: '600', color: COLORS.primary },
+  retakeButton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 12, backgroundColor: 'rgba(255,107,53,0.1)' },
+  retakeText: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
 
-  badgesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  badgeCard: { width: (screenWidth - 44) / 2, backgroundColor: '#FFFFFF', borderRadius: 18, padding: 16, alignItems: 'center', ...SHADOW },
-  badgeIcon: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  badgeEmoji: { fontSize: 28 },
-  badgeTitle: { fontSize: 14, fontWeight: '800', color: COLORS.text, textAlign: 'center', marginBottom: 4 },
-  badgeSubtitle: { fontSize: 12, color: COLORS.textMuted, textAlign: 'center' },
+  // badges 2x2 compact (icon + texts, row)
+  badgesGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  badgeCard: { width: '48.5%', flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFFFF', borderRadius: 15, paddingVertical: 11, paddingHorizontal: 12, marginBottom: 10, ...SHADOW },
+  badgeIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  badgeTexts: { flex: 1 },
+  badgeTitle: { fontSize: 13, fontWeight: '800', color: COLORS.text },
+  badgeSubtitle: { fontSize: 11, color: COLORS.textMuted, fontWeight: '600', marginTop: 1 },
 
-  ratingsContainer: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, ...SHADOW },
-  ratingSection: { alignItems: 'center', paddingVertical: 12 },
-  ratingLabel: { fontSize: 13, color: COLORS.textMuted, fontWeight: '600', marginBottom: 4 },
-  ratingPlayer: { fontSize: 18, fontWeight: '800', color: COLORS.text, marginBottom: 10 },
-  starsRow: { flexDirection: 'row', gap: 6 },
-  starIcon: { marginHorizontal: 2 },
-  ratingText: { marginTop: 8, fontSize: 14, fontWeight: '700', color: COLORS.primary },
-  ratingDivider: { height: 1, backgroundColor: COLORS.border, marginVertical: 8 },
+  // ratings (clean rows)
+  ratingsContainer: { backgroundColor: '#FFFFFF', borderRadius: 18, paddingHorizontal: 16, ...SHADOW },
+  rateRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13 },
+  rateLeft: { flex: 1 },
+  rateLabel: { fontSize: 11, color: COLORS.textMuted, fontWeight: '700' },
+  rateName: { fontSize: 15, fontWeight: '800', color: COLORS.text, marginTop: 1 },
+  starsRow: { flexDirection: 'row' },
+  starIcon: { marginHorizontal: 1 },
+  ratingDivider: { height: 1, backgroundColor: COLORS.border },
 
-  buttonsContainer: { marginTop: 28, paddingHorizontal: 16, gap: 12 },
-  savedBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, backgroundColor: 'rgba(76, 175, 80, 0.15)', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(76, 175, 80, 0.3)' },
-  savedText: { fontSize: 15, fontWeight: '700', color: COLORS.success },
+  buttonsContainer: { marginTop: 24, paddingHorizontal: 16, gap: 12 },
+  savedBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 13, backgroundColor: 'rgba(76, 175, 80, 0.13)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(76, 175, 80, 0.28)' },
+  savedText: { fontSize: 14, fontWeight: '800', color: COLORS.success },
   playAgainButton: { borderRadius: 18, overflow: 'hidden' },
-  playAgainGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 18, gap: 10, borderRadius: 18 },
-  playAgainText: { fontSize: 18, fontWeight: '800', color: '#FFFFFF' },
+  playAgainGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 17, gap: 10, borderRadius: 18 },
+  playAgainText: { fontSize: 17, fontWeight: '900', color: '#FFFFFF' },
 
   cameraContainer: { flex: 1, backgroundColor: '#000' },
   camera: { flex: 1 },
