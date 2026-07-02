@@ -3,22 +3,19 @@ import { TestIds } from 'react-native-google-mobile-ads';
 
 // ───────────────────────────────────────────────────────────────
 // REKLAM AYARLARI
-// Şu an Google'ın TEST reklamları gösteriliyor (USE_TEST_ADS = true).
-// AdMob hesabı açıldığında:
-//   1) app.json içindeki react-native-google-mobile-ads > android_app_id / ios_app_id
-//      değerlerini gerçek App ID ile değiştir.
-//   2) Aşağıdaki REAL_* değerlerine gerçek reklam birimi ID'lerini gir.
-//   3) USE_TEST_ADS = false yap.
+// Geliştirmede (Expo Go / dev build) otomatik TEST reklamları,
+// production build'lerde (EAS production profili) GERÇEK reklamlar gösterilir.
+// Kendi cihazında gerçek reklamlara tıklama — AdMob geçersiz trafik sayar.
 // ───────────────────────────────────────────────────────────────
-var USE_TEST_ADS = true;
+var USE_TEST_ADS = __DEV__;
 
 var REAL_BANNER = {
   android: 'ca-app-pub-2603931978234460/7064153679',
-  ios: 'ca-app-pub-2603931978234460/7064153679', // iOS ayrı birim açılınca güncellenecek
+  ios: 'ca-app-pub-2603931978234460/9771651027',
 };
 var REAL_INTERSTITIAL = {
   android: 'ca-app-pub-2603931978234460/9870546344',
-  ios: 'ca-app-pub-2603931978234460/9870546344', // iOS ayrı birim açılınca güncellenecek
+  ios: 'ca-app-pub-2603931978234460/7658669175',
 };
 
 function pick(real) {
