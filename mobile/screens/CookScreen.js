@@ -12,28 +12,39 @@ import SpotlightTutorial from '../components/SpotlightTutorial';
 import { useAudioPlayer } from 'expo-audio';
 import { fireSource, dingSource } from '../utils/SoundManager';
 import { mediumTap, lightTap, celebrationPattern } from '../utils/HapticManager';
-import { useLang } from '../i18n';
+import { useLang, getLanguage } from '../i18n';
 import { BannerAd, BannerAdSize, InterstitialAd, AdEventType } from 'react-native-google-mobile-ads';
 import { bannerAdUnitId, interstitialAdUnitId } from '../utils/ads';
 
 var screenWidth = Dimensions.get('window').width;
 var screenHeight = Dimensions.get('window').height;
 
-// Malzeme metnini "isim + ölçü" olarak token bazlı ayır.
-// AI "miktar + isim" (ör. "200 gr makarna") veya "isim + miktar" döndürebilir; ikisi de doğru bölünür.
-// Token bazlı eşleşme: "kremalı" içindeki "ml" gibi yanlış kesmeleri önler. Kısaltmalar tam yazılır (gr -> gram).
+// Malzeme metnini "isim + ölçü" olarak token bazlı ayır (TR + EN).
+// AI "miktar + isim" (ör. "200 gr makarna", "2 tbsp olive oil") veya "isim + miktar" döndürebilir; ikisi de doğru bölünür.
+// Token bazlı eşleşme: "kremalı" içindeki "ml" gibi yanlış kesmeleri önler. Kısaltmalar tam yazılır (gr -> gram, tbsp -> tablespoons).
 // {name, amount} nesnesi gelirse doğrudan kullanılır. Ayrıştırılamazsa tüm metin isim olur.
-var ING_UNITS = ['yemek kaşığı', 'tatlı kaşığı', 'çay kaşığı', 'su bardağı', 'çay bardağı', 'fincan', 'adet', 'gram', 'kilogram', 'litre', 'mililitre', 'gr', 'kg', 'ml', 'lt', 'tutam', 'diş', 'dal', 'demet', 'paket', 'kutu', 'dilim', 'baş', 'kase', 'avuç', 'bağ', 'top', 'salkım'];
-var ING_QTY = ['yarım', 'çeyrek', 'birkaç', 'bir', 'iki', 'üç', 'dört', 'beş', 'altı', 'yedi', 'sekiz', 'dokuz', 'on', 'az', 'biraz'];
-var UNIT_FULL = { gr: 'gram', gram: 'gram', kg: 'kilogram', ml: 'mililitre', lt: 'litre', l: 'litre' };
-function tcap(x) { x = String(x == null ? '' : x).trim(); return x ? (x.charAt(0).toLocaleUpperCase('tr-TR') + x.slice(1)) : x; }
+var ING_UNITS = [
+  // Türkçe
+  'yemek kaşığı', 'tatlı kaşığı', 'çay kaşığı', 'su bardağı', 'çay bardağı', 'fincan', 'adet', 'gram', 'kilogram', 'litre', 'mililitre', 'gr', 'kg', 'ml', 'lt', 'tutam', 'diş', 'dal', 'demet', 'paket', 'kutu', 'dilim', 'baş', 'kase', 'avuç', 'bağ', 'top', 'salkım',
+  // English
+  'tablespoon', 'tablespoons', 'tbsp', 'teaspoon', 'teaspoons', 'tsp', 'cup', 'cups', 'grams', 'kilograms', 'milliliter', 'milliliters', 'millilitre', 'millilitres', 'liter', 'liters', 'litre', 'litres', 'g', 'l', 'oz', 'ounce', 'ounces', 'lb', 'pound', 'pounds', 'piece', 'pieces', 'clove', 'cloves', 'pinch', 'pinches', 'slice', 'slices', 'can', 'cans', 'pack', 'packs', 'package', 'bunch', 'bunches', 'sprig', 'sprigs', 'handful', 'stick', 'sticks', 'dash', 'head', 'heads',
+];
+var ING_QTY = [
+  'yarım', 'çeyrek', 'birkaç', 'bir', 'iki', 'üç', 'dört', 'beş', 'altı', 'yedi', 'sekiz', 'dokuz', 'on', 'az', 'biraz',
+  'half', 'quarter', 'a', 'an', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'some', 'few', 'couple',
+];
+var UNIT_FULL_TR = { gr: 'gram', kg: 'kilogram', ml: 'mililitre', lt: 'litre', l: 'litre' };
+var UNIT_FULL_EN = { tbsp: 'tablespoons', tsp: 'teaspoons', g: 'grams', gr: 'grams', kg: 'kilograms', ml: 'milliliters', l: 'liters', oz: 'ounces', lb: 'pounds' };
+function ingLocale() { return getLanguage() === 'en' ? 'en-US' : 'tr-TR'; }
+function tcap(x) { x = String(x == null ? '' : x).trim(); return x ? (x.charAt(0).toLocaleUpperCase(ingLocale()) + x.slice(1)) : x; }
 function expandUnits(a) {
+  var table = getLanguage() === 'en' ? UNIT_FULL_EN : UNIT_FULL_TR;
   return String(a == null ? '' : a).split(/\s+/).map(function (tok) {
-    return UNIT_FULL[tok.toLocaleLowerCase('tr-TR')] || tok;
+    return table[tok.toLocaleLowerCase(ingLocale())] || tok;
   }).join(' ').trim();
 }
 function isQtyToken(tok) {
-  return /^[\d]+([.,/]\d+)?$/.test(tok) || ING_QTY.indexOf(tok.toLocaleLowerCase('tr-TR')) !== -1;
+  return /^[\d]+([.,/]\d+)?$/.test(tok) || ING_QTY.indexOf(tok.toLocaleLowerCase(ingLocale())) !== -1;
 }
 function parseIngredient(raw) {
   if (raw && typeof raw === 'object') {
@@ -41,8 +52,9 @@ function parseIngredient(raw) {
   }
   var s = String(raw == null ? '' : raw).trim();
   if (!s) return { name: '', amount: '' };
+  var loc = ingLocale();
   var toks = s.split(/\s+/);
-  var low = toks.map(function (x) { return x.toLocaleLowerCase('tr-TR'); });
+  var low = toks.map(function (x) { return x.toLocaleLowerCase(loc); });
   var uStart = -1, uEnd = -1;
   for (var i = 0; i < toks.length; i++) {
     var two = (i + 1 < toks.length) ? (low[i] + ' ' + low[i + 1]) : null;
@@ -55,6 +67,8 @@ function parseIngredient(raw) {
     var q = [];
     while (before.length && isQtyToken(before[before.length - 1])) { q.unshift(before.pop()); }
     var amount = q.concat(toks.slice(uStart, uEnd)).join(' ');
+    // "3 cloves of garlic" -> isim "garlic" ("of" atılır)
+    if (after.length && after[0].toLocaleLowerCase(loc) === 'of') after = after.slice(1);
     var name = before.concat(after).join(' ').replace(/^[\s,;·–-]+|[\s,;·–-]+$/g, '').trim();
     return { name: tcap(name || s), amount: expandUnits(amount) };
   }

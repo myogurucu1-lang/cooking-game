@@ -304,7 +304,7 @@ YASAK GÖREVLER: Romantik/duygusal, fiziksel temas, kamera/kayıt, ateş/süre/p
     "prepTime": "${isGundelik ? '20-30 dakika' : '45-90 dakika'}",
     "difficulty": "${difficulty}",
     "servings": "2 kişilik",
-    "ingredients": ["miktar + malzeme"],
+    "ingredients": ["miktar + malzeme — ölçüler KISALTMASIZ tam kelime ('2 yemek kaşığı sıvı yağ', '200 gram makarna'); yk/tk/gr/ml gibi kısaltma YASAK"],
     "steps": [
       { "step": 1, "instruction": "adım", "duration": "X dakika", "heat": "ateş seviyesi" }
     ]
@@ -337,7 +337,8 @@ ALSO: If the input is a single vague/nonsense word or does not contain a real fo
 
 ═══ ABSOLUTE RULES (NON-NEGOTIABLE) ═══
 
-1) REAL DISH: The dish MUST be a real, known dish from world/international cuisine (home-style or restaurant). No made-up names, no "X-style", no "special version", no "tornado/volcano" nonsense. If a dish has a well-known authentic name (Italian, French, Spanish, etc.), use that real name.
+1) REAL DISH: The dish MUST be a real, known dish from world/international cuisine (home-style or restaurant). No made-up names, no "X-style", no "special version", no "tornado/volcano" nonsense.
+DISH NAME LANGUAGE: If the dish is an authentic national dish with a well-known native name (Turkish, Italian, French, Spanish, etc.), use that authentic name followed by a short English translation in parentheses — e.g. "Izgara Köfte (Grilled Turkish Meatballs)", "Menemen (Turkish Scrambled Eggs with Tomatoes)", "Spaghetti all'Assassina (Assassin's Spaghetti)". Otherwise use a plain English name. NEVER return a non-English name without the English translation in parentheses.
 
 2) INGREDIENT LIMIT: Use only the ingredients the user gave. The ONLY free extras are: salt, black pepper, chili flakes, cooking oil. Add NOTHING else (no egg, cheese, milk, onion, garlic, rice, flour, meat, etc. unless the user listed it). If the ingredients are not enough for a dish, pick a real dish that CAN be made with what is given.
 
@@ -373,12 +374,12 @@ FORBIDDEN TASKS: romantic/emotional, physical contact, camera/recording, decisio
 ═══ JSON FORMAT ═══
 {
   "recipe": {
-    "name": "real dish name",
-    "description": "short description",
+    "name": "dish name (authentic national dish -> authentic name + English in parentheses; otherwise plain English)",
+    "description": "short description in English",
     "prepTime": "${isGundelik ? '20-30 minutes' : '45-90 minutes'}",
     "difficulty": "${difficulty}",
     "servings": "2 servings",
-    "ingredients": ["amount + ingredient"],
+    "ingredients": ["amount + ingredient, ALL in English, measures written as FULL words ('2 tablespoons olive oil', '200 grams pasta') — NO abbreviations like tbsp/tsp/g/ml"],
     "steps": [
       { "step": 1, "instruction": "step", "duration": "X minutes", "heat": "heat level" }
     ]
