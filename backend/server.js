@@ -92,12 +92,70 @@ const BLOCKED_WORDS = [
   'fuck', 'shit', 'dick', 'pussy', 'cock', 'bitch', 'asshole', 'cunt', 'porn', 'sex',
   'vagina', 'tits', 'boobs', 'fag', 'nigger',
 ];
-function containsBlockedContent(text) {
-  let norm = String(text).toLowerCase()
+function normalizeText(text) {
+  return String(text).toLowerCase()
     .replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ğ/g, 'g')
     .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c');
-  const tokens = norm.split(/[^a-z]+/).filter(Boolean);
+}
+
+function containsBlockedContent(text) {
+  const tokens = normalizeText(text).split(/[^a-z]+/).filter(Boolean);
   return tokens.some((tok) => BLOCKED_WORDS.indexOf(tok) !== -1);
+}
+
+// "Her şey", "farketmez" gibi genel ifadeleri Gemini "istediğin malzemeyi seç"
+// diye yorumlayıp malzeme uyduruyor (prompt'taki geçerlilik kuralına rağmen).
+// Bu yüzden somut malzeme içermeyen girdileri AI'a hiç göndermeden reddediyoruz.
+const VAGUE_PHRASES = [
+  'her sey', 'hersey', 'ne olursa olsun', 'ne olursa', 'ne varsa', 'ne bulursan',
+  'fark etmez', 'farketmez', 'sen sec', 'sen karar ver', 'sana kalmis',
+  'bilmiyorum', 'bilmem', 'onemli degil', 'herhangi bir sey', 'herhangi',
+  'surpriz', 'rastgele', 'ne istersen',
+  'anything goes', 'everything', 'anything', 'whatever', 'surprise me',
+  'surprise', 'random', 'you choose', 'you pick', 'you decide',
+  'dont know', 'don t know', 'no idea', 'idk', 'dunno',
+];
+// Tek başına malzeme bildirmeyen dolgu kelimeleri (girdide BUNLARDAN BAŞKA
+// bir şey kalmıyorsa girdi belirsizdir; kalan varsa AI + örtüşme kontrolü karar verir)
+const FILLER_WORDS = [
+  've', 'ile', 'veya', 'and', 'the', 'bir', 'biraz', 'seyler', 'sey', 'seyi',
+  'hepsi', 'olsun', 'olur', 'yap', 'ver', 'kullan', 'lutfen', 'istiyorum',
+  'isterim', 'yemek', 'yemegi', 'tarif', 'tarifi', 'bana', 'guzel', 'lezzetli',
+  'please', 'some', 'something', 'stuff', 'food', 'recipe', 'make', 'give',
+  'want', 'nice', 'good', 'goes',
+];
+// 2 harfli ama gerçek yiyecek olan kelimeler — belirsizlik kontrolünde anlamlı sayılır
+const SHORT_FOODS = ['et', 'un', 'su'];
+function isVagueInput(text) {
+  let norm = normalizeText(text);
+  // Uzun kalıplar önce silinmeli ("her sey" gibi), yoksa parçaları token olarak kalır
+  VAGUE_PHRASES.slice().sort((a, b) => b.length - a.length).forEach((p) => {
+    norm = norm.split(p).join(' ');
+  });
+  const remaining = norm.split(/[^a-z]+/).filter(
+    (w) => (w.length >= 3 || SHORT_FOODS.indexOf(w) !== -1) && FILLER_WORDS.indexOf(w) === -1
+  );
+  return remaining.length === 0;
+}
+
+// Üretilen tarifin malzemeleri kullanıcının yazdıklarıyla örtüşüyor mu?
+// Gemini kural dışına çıkıp malzeme uydurursa ("her şey" → patates gibi)
+// bunu sunucuda deterministik olarak yakalar. Kontrol bilinçli olarak gevşek:
+// kullanıcının TEK BİR kelimesinin (kök olarak) malzeme listesinde geçmesi yeter,
+// böylece gerçek tarifler asla yanlışlıkla reddedilmez.
+function ingredientsOverlap(userText, ingredientLines) {
+  const hay = normalizeText((ingredientLines || []).map((l) =>
+    (l && typeof l === 'object') ? ((l.name || '') + ' ' + (l.amount || '')) : String(l || '')
+  ).join(' '));
+  const tokens = normalizeText(userText).split(/[^a-z]+/).filter(
+    (w) => w.length >= 3 && FILLER_WORDS.indexOf(w) === -1
+  );
+  if (tokens.length === 0) return true; // karşılaştırılacak belirgin kelime yok ("et", "un" gibi kısa girdiler) — engelleme
+  return tokens.some((t) => {
+    // Ek/çoğul farklarını tolere et: kelimenin kendisi, ilk 5 harfi (kök), eksiz hali
+    const candidates = [t, t.slice(0, 5), t.replace(/(ler|lar)$/, ''), t.replace(/es$/, ''), t.replace(/s$/, '')];
+    return candidates.some((c) => c.length >= 3 && hay.indexOf(c) !== -1);
+  });
 }
 
 // Girdi doğrulama: tip + uzunluk sınırları (prompt şişirme/injection yüzeyini daraltır)
@@ -140,6 +198,12 @@ app.post('/api/recipe', async (req, res) => {
       return res.status(400).json({ error: 'invalid_ingredients' });
     }
 
+    // "Her şey", "farketmez" gibi somut malzeme içermeyen girdiler → AI'a gitmeden reddet
+    if (isVagueInput(ingredients)) {
+      console.log('🚫 Belirsiz girdi (somut malzeme yok):', ingredients.substring(0, 60));
+      return res.status(400).json({ error: 'invalid_ingredients' });
+    }
+
     // PII maskeleme: isimler loglanmaz
     console.log('🤖 AI İsteği:', { ingredients: ingredients.substring(0, 60), difficulty, attemptNumber, prevRecipes: (previousRecipes || []).length, prevTasks: (previousTasks || []).length });
 
@@ -163,6 +227,7 @@ app.post('/api/recipe', async (req, res) => {
     let parsedData = null;
     let lastError = null;
     let invalidInput = false;
+    let ingredientMismatch = false;
     for (let attempt = 1; attempt <= 2 && !parsedData && !clientGone; attempt++) {
       try {
         const result = await model.generateContent(prompt);
@@ -188,6 +253,12 @@ app.post('/api/recipe', async (req, res) => {
         if (!Array.isArray(candidate.challengerTasks)) {
           candidate.challengerTasks = [];
         }
+        // AI kullanıcının yazmadığı malzemelerle tarif uydurduysa reddet
+        // (yeni denemede düzelme şansı için attempt döngüsü içinde)
+        if (!ingredientsOverlap(ingredients, candidate.recipe.ingredients)) {
+          ingredientMismatch = true;
+          throw new Error('Tarif malzemeleri kullanıcı girdisiyle örtüşmüyor');
+        }
         parsedData = candidate;
       } catch (attemptError) {
         lastError = attemptError;
@@ -201,6 +272,10 @@ app.post('/api/recipe', async (req, res) => {
     }
     if (invalidInput) {
       console.log('🚫 Geçersiz girdi (yiyecek değil/uygunsuz)');
+      return res.status(400).json({ error: 'invalid_ingredients' });
+    }
+    if (!parsedData && ingredientMismatch) {
+      console.log('🚫 Girdiyle örtüşmeyen tarif üretildi, geçersiz girdi sayıldı');
       return res.status(400).json({ error: 'invalid_ingredients' });
     }
     if (!parsedData) throw lastError;
@@ -256,6 +331,8 @@ GİRDİLER:
 Malzemeler gerçek, yenebilir YİYECEK olmalı. Eğer girdi yiyecek değilse (mobilya, eşya, nesne, yer, hayvan, soyut/saçma/alakasız kelimeler) VEYA küfür, cinsel, saldırgan ya da uygunsuz ifade içeriyorsa: KESİNLİKLE tarif ÜRETME. Bu durumda başka HİÇBİR ŞEY yazma, SADECE şu JSON'u döndür:
 {"invalid": true}
 Örnek geçersiz girdiler: "sandalye, masa", "telefon", "am", "pipi", küfürlü/müstehcen kelimeler. Bunlardan asla yemek uydurma.
+"her şey", "farketmez", "ne olursa olsun", "sen seç" gibi SOMUT malzeme adı içermeyen genel ifadeler de GEÇERSİZDİR → {"invalid": true}. Bunları "istediğim malzemeyi seçebilirim" diye YORUMLAMA — kullanıcı somut malzeme yazmadıysa tarif yok.
+"asdf", "qwer", "xyz" gibi rastgele harf dizileri yiyecek DEĞİLDİR → {"invalid": true}. Rastgele harf dizisini malzeme adı gibi kullanıp tarif YAZMA.
 AYRICA: Girdi tek bir belirsiz/anlamsız kelimeyse veya gerçek bir yiyecek malzemesi içermiyorsa da {"invalid": true} döndür. Kullanıcının YAZMADIĞI malzemeyi (sucuk, domates vb.) ASLA kendin uydurup ekleme — girdide olmayan malzemeyle tarif YAPMA.
 
 ═══ MUTLAK KURALLAR (ÇİĞNENEMEZ) ═══
@@ -333,6 +410,8 @@ INPUTS:
 The ingredients must be real, edible FOOD. If the input is not food (furniture, objects, places, animals, abstract/nonsense/irrelevant words) OR contains profanity, sexual, offensive or inappropriate language: DO NOT generate a recipe. In that case write NOTHING else, return ONLY this JSON:
 {"invalid": true}
 Example invalid inputs: "chair, table", "phone", profane/obscene words. Never invent a dish from these.
+Vague catch-all phrases with NO concrete ingredient name ("everything", "anything", "whatever", "surprise me", "you choose") are ALSO invalid → {"invalid": true}. Do NOT interpret them as "I may pick any ingredients I want" — no concrete ingredients means no recipe.
+Random letter strings ("asdf", "qwer", "xyz") are NOT food → {"invalid": true}. NEVER use a random letter string as an ingredient name in a recipe.
 ALSO: If the input is a single vague/nonsense word or does not contain a real food ingredient, return {"invalid": true}. NEVER invent ingredients the user did NOT write (e.g. sausage, tomato) — do not make a recipe with ingredients that are not in the input.
 
 ═══ ABSOLUTE RULES (NON-NEGOTIABLE) ═══
