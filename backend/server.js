@@ -58,6 +58,11 @@ app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json({ limit: '10kb' }));
 
+// Gizlilik politikası + destek sayfaları (App Store / Play Store formları için)
+app.use(express.static('public'));
+app.get('/privacy', (req, res) => res.redirect('/privacy.html'));
+app.get('/support', (req, res) => res.redirect('/support.html'));
+
 // Gerçek istemci IP'si başına dakikada 30 istek — her kullanıcı kendi kovası.
 // 'trust proxy' açık olduğu için req.ip zaten X-Forwarded-For'daki gerçek
 // istemci IP'sini verir; varsayılan keyGenerator IPv6'yı da doğru ele alır
