@@ -138,15 +138,16 @@ function isVagueInput(text) {
   return remaining.length === 0;
 }
 
-// Üretilen tarifin malzemeleri kullanıcının yazdıklarıyla örtüşüyor mu?
+// Üretilen tarif kullanıcının yazdıklarıyla örtüşüyor mu?
 // Gemini kural dışına çıkıp malzeme uydurursa ("her şey" → patates gibi)
 // bunu sunucuda deterministik olarak yakalar. Kontrol bilinçli olarak gevşek:
-// kullanıcının TEK BİR kelimesinin (kök olarak) malzeme listesinde geçmesi yeter,
-// böylece gerçek tarifler asla yanlışlıkla reddedilmez.
-function ingredientsOverlap(userText, ingredientLines) {
+// kullanıcının TEK BİR kelimesinin (kök olarak) malzemelerde, tarif adında
+// veya açıklamada geçmesi yeter — böylece gerçek tarifler ve yemek adı
+// girdileri ("pizza", "menemen" → tarif adıyla eşleşir) yanlışlıkla reddedilmez.
+function ingredientsOverlap(userText, ingredientLines, recipeName, recipeDesc) {
   const hay = normalizeText((ingredientLines || []).map((l) =>
     (l && typeof l === 'object') ? ((l.name || '') + ' ' + (l.amount || '')) : String(l || '')
-  ).join(' '));
+  ).join(' ') + ' ' + (recipeName || '') + ' ' + (recipeDesc || ''));
   const tokens = normalizeText(userText).split(/[^a-z]+/).filter(
     (w) => w.length >= 3 && FILLER_WORDS.indexOf(w) === -1
   );
@@ -255,7 +256,7 @@ app.post('/api/recipe', async (req, res) => {
         }
         // AI kullanıcının yazmadığı malzemelerle tarif uydurduysa reddet
         // (yeni denemede düzelme şansı için attempt döngüsü içinde)
-        if (!ingredientsOverlap(ingredients, candidate.recipe.ingredients)) {
+        if (!ingredientsOverlap(ingredients, candidate.recipe.ingredients, candidate.recipe.name, candidate.recipe.description)) {
           ingredientMismatch = true;
           throw new Error('Tarif malzemeleri kullanıcı girdisiyle örtüşmüyor');
         }
@@ -340,6 +341,7 @@ AYRICA: Girdi tek bir belirsiz/anlamsız kelimeyse veya gerçek bir yiyecek malz
 1) GERÇEK YEMEK: Ürettiğin yemek MUTLAKA var olan, bilinen bir yemek olmalı (Türk/dünya mutfağı, ev yemeği, restoran yemeği). Uydurma isim, "X tarzı", "özel versiyon", "tornado/volkano" gibi şeyler YASAK. Ama dikkat: yemeğin dünyaca bilinen ÖZGÜN bir adı varsa (İtalyanca, Fransızca, İspanyolca vb.) o adı aynen kullan — gerçek yabancı isimler uydurma sayılmaz (örn. "Spaghetti all'Assassina", "Penne all'Arrabbiata", "Ratatouille" gerçek yemeklerdir). Yemeğin ne olduğunu description alanında Türkçe açıkla.
 
 2) MALZEME SINIRI: Sadece kullanıcının verdiği malzemeleri kullan. Ekstra serbest olanlar SADECE: tuz, karabiber, pul biber, sıvı yağ. Bunun DIŞINDA hiçbir malzeme ekleme (yumurta, peynir, süt, soğan, sarımsak, pirinç, un, et vb. EKLENEMEZ). Verilen malzeme bir yemek için yetmiyorsa, o yemeği yapma — eldeki malzemeyle yapılabilecek gerçek bir yemek seç.
+İSTİSNA — YEMEK ADI GİRDİSİ: Kullanıcı malzeme listesi yerine bir YEMEK ADI yazdıysa ("pizza", "menemen", "lazanya" gibi), bu geçerli bir istektir: o yemeğin gerçek tarifini, gereken TÜM malzemeleri eksiksiz listeleyerek ver (malzeme sınırı bu durumda uygulanmaz). Tarifin adı, kullanıcının yazdığı yemek olmalı.
 
 3) DOĞRU TEKNİK VE FORM:
 - Her malzemeyi gerçek hayatta kullanıldığı şekilde kullan.
@@ -420,6 +422,7 @@ ALSO: If the input is a single vague/nonsense word or does not contain a real fo
 DISH NAME LANGUAGE: If the dish is an authentic national dish with a well-known native name (Turkish, Italian, French, Spanish, etc.), use that authentic name followed by a short English translation in parentheses — e.g. "Izgara Köfte (Grilled Turkish Meatballs)", "Menemen (Turkish Scrambled Eggs with Tomatoes)", "Spaghetti all'Assassina (Assassin's Spaghetti)". Otherwise use a plain English name. NEVER return a non-English name without the English translation in parentheses.
 
 2) INGREDIENT LIMIT: Use only the ingredients the user gave. The ONLY free extras are: salt, black pepper, chili flakes, cooking oil. Add NOTHING else (no egg, cheese, milk, onion, garlic, rice, flour, meat, etc. unless the user listed it). If the ingredients are not enough for a dish, pick a real dish that CAN be made with what is given.
+EXCEPTION — DISH NAME INPUT: If the user typed a DISH NAME instead of an ingredient list ("pizza", "lasagna", "menemen"), that is a valid request: generate that dish's real recipe listing ALL required ingredients (the ingredient limit does not apply in this case). The recipe name must be the dish the user asked for.
 
 3) CORRECT TECHNIQUE AND FORM:
 - Use each ingredient the way it is really used.
