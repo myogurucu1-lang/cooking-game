@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, ActivityIndicator, TouchableOpacity, AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import mobileAds from 'react-native-google-mobile-ads';
-import { requestTrackingPermissionsAsync } from 'expo-tracking-transparency';
+import { requestTrackingPermissionsAsync, getTrackingPermissionsAsync } from 'expo-tracking-transparency';
 import { LanguageProvider } from './i18n';
 import OnboardingScreen from './screens/OnboardingScreen';
 import SetupScreen from './screens/SetupScreen';
@@ -61,11 +61,37 @@ export default function App() {
     setupAds();
   }, []);
 
-  // Önce iOS izleme izni (ATT) iste, sonra AdMob'u başlat (Android'de no-op)
+  // Önce iOS izleme izni (ATT) iste, sonra AdMob'u başlat (Android'de no-op).
+  // ATT penceresi SADECE uygulama "active" durumdayken görünür; soğuk açılışta
+  // uygulama henüz aktif olmayabilir, bu yüzden aktif olana kadar bekle ve
+  // pencere tam sunulsun diye kısa bir gecikme ver (yoksa iOS sessizce geçer).
+  const requestTrackingWhenActive = async () => {
+    const ask = async () => {
+      try {
+        const { status } = await getTrackingPermissionsAsync();
+        if (status === 'undetermined') {
+          await new Promise((r) => setTimeout(r, 800));
+          await requestTrackingPermissionsAsync();
+        }
+      } catch (e) {}
+    };
+    if (AppState.currentState === 'active') {
+      await ask();
+      return;
+    }
+    await new Promise((resolve) => {
+      const sub = AppState.addEventListener('change', (state) => {
+        if (state === 'active') {
+          sub.remove();
+          resolve();
+        }
+      });
+    });
+    await ask();
+  };
+
   const setupAds = async () => {
-    try {
-      await requestTrackingPermissionsAsync();
-    } catch (e) {}
+    await requestTrackingWhenActive();
     mobileAds().initialize().catch(() => {});
   };
 
