@@ -32,11 +32,16 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Used for interactive audio features during the game."
+        }
+      ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Yemeğinin fotoğrafını çekmek için kamera iznine ihtiyaç var."
+          "cameraPermission": "Used to take a photo of your finished dish."
         }
       ],
       [
@@ -54,7 +59,7 @@
       [
         "expo-tracking-transparency",
         {
-          "userTrackingPermission": "Verileriniz, size daha alakalı reklamlar göstermek için kullanılacaktır."
+          "userTrackingPermission": "Your data will be used to show you more relevant ads."
         }
       ]
     ],
