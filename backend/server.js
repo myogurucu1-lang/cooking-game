@@ -4,6 +4,8 @@ const rateLimit = require('express-rate-limit');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { TASK_POOL } = require('./taskPool');
 const { TASK_POOL_EN } = require('./taskPool.en');
+const { TASK_POOL_DATENIGHT } = require('./taskPool.datenight');
+const { TASK_POOL_DATENIGHT_EN } = require('./taskPool.datenight.en');
 require('dotenv').config();
 
 // Seed'e bağlı deterministik RNG — aynı seed aynı aday listesini üretir
@@ -16,8 +18,32 @@ function mulberry32(a) {
   };
 }
 
+// Date Night: faz dengeli örnekleme — gecenin doğal eğrisi korunur
+// (başta tatlı sözler, ortada eğlence, sonda kıvılcım, son adımda sofra)
+function sampleDatenightTasks(seed, language) {
+  const pool = language === 'en' ? TASK_POOL_DATENIGHT_EN : TASK_POOL_DATENIGHT;
+  const rng = mulberry32((seed >>> 0) || 12345);
+  const byPhase = { early: [], mid: [], late: [], finale: [] };
+  pool.forEach(t => { if (byPhase[t.phase]) byPhase[t.phase].push(t); });
+  const pickFrom = (arr, n) => {
+    const s = arr.slice();
+    for (let i = s.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [s[i], s[j]] = [s[j], s[i]];
+    }
+    return s.slice(0, n);
+  };
+  return [
+    ...pickFrom(byPhase.early, 4),
+    ...pickFrom(byPhase.mid, 5),
+    ...pickFrom(byPhase.late, 4),
+    ...pickFrom(byPhase.finale, 2),
+  ];
+}
+
 // Havuzdan her istek için rastgele aday alt kümesi seç (dile göre havuz)
-function sampleTasks(difficulty, seed, language) {
+function sampleTasks(difficulty, seed, language, pack) {
+  if (pack === 'datenight') return sampleDatenightTasks(seed, language);
   const pool = language === 'en' ? TASK_POOL_EN : TASK_POOL;
   const rng = mulberry32((seed >>> 0) || 12345);
   const eligible = pool.filter(t => t.mode === 'both' || t.mode === difficulty);
@@ -193,6 +219,8 @@ app.post('/api/recipe', async (req, res) => {
   try {
     const { ingredients, difficulty, cookName, challengerName, variationSeed, attemptNumber, previousRecipes, previousTasks } = req.body || {};
     const language = (req.body && req.body.language === 'en') ? 'en' : 'tr';
+    // pack: undefined (klasik) | 'datenight' (romantik paket) — başka değer kabul edilmez
+    const pack = (req.body && req.body.pack === 'datenight') ? 'datenight' : undefined;
 
     const validationError = validateRecipeInput(req.body || {});
     if (validationError) {
@@ -227,7 +255,7 @@ app.post('/api/recipe', async (req, res) => {
       }
     });
 
-    const prompt = buildPrompt(ingredients, difficulty, cookName, challengerName, variationSeed, attemptNumber, previousRecipes, previousTasks, language);
+    const prompt = buildPrompt(ingredients, difficulty, cookName, challengerName, variationSeed, attemptNumber, previousRecipes, previousTasks, language, pack);
 
     // AI bazen bozuk/eksik JSON döndürebiliyor: 2 deneme hakkı ver
     let parsedData = null;
@@ -309,19 +337,31 @@ app.post('/api/recipe', async (req, res) => {
   }
 });
 
-function buildPrompt(ingredients, difficulty, cookName, challengerName, variationSeed, attemptNumber, previousRecipes, previousTasks, language) {
+// Görev metnindeki {cook}/{challenger} yer tutucularını gerçek isimlerle doldur
+function fillNames(text, cookName, challengerName) {
+  return String(text).split('{cook}').join(cookName).split('{challenger}').join(challengerName);
+}
+
+// Date Night aday satırı: faz etiketi + güvenlik notu (TR)
+const PHASE_TAG_TR = { early: '[BAŞLANGIÇ: ilk üçte birde ver]', mid: '[ORTA: tarifin ortasında ver]', late: '[KIVILCIM: son üçte birde ver]', finale: '[SERVİS: SON adımda ver]' };
+const PHASE_TAG_EN = { early: '[OPENING: give in the first third]', mid: '[MIDDLE: give mid-recipe]', late: '[SPARK: give in the final third]', finale: '[SERVICE: give at the LAST step]' };
+
+function buildPrompt(ingredients, difficulty, cookName, challengerName, variationSeed, attemptNumber, previousRecipes, previousTasks, language, pack) {
   const isGundelik = difficulty === 'gundelik';
   const seed = variationSeed || Math.floor(Math.random() * 100000);
   const prevList = (previousRecipes && previousRecipes.length) ? previousRecipes : [];
   const prevTasks = (previousTasks && previousTasks.length) ? previousTasks : [];
-  const taskCandidates = sampleTasks(difficulty, seed, language);
+  const taskCandidates = sampleTasks(difficulty, seed, language, pack);
 
   if (language === 'en') {
-    return buildPromptEn(ingredients, difficulty, isGundelik, cookName, challengerName, seed, prevList, prevTasks, taskCandidates);
+    return buildPromptEn(ingredients, difficulty, isGundelik, cookName, challengerName, seed, prevList, prevTasks, taskCandidates, pack);
   }
 
+  const isDatenight = pack === 'datenight';
   const candidateLines = taskCandidates.map(function (t, i) {
-    return (i + 1) + '. ' + t.text + (t.safeOnly ? ' [SADECE bıçak/sıcak yağ/ateş içermeyen adımda ver]' : '');
+    const text = isDatenight ? fillNames(t.text, cookName, challengerName) : t.text;
+    const phaseTag = isDatenight && t.phase ? ' ' + PHASE_TAG_TR[t.phase] : '';
+    return (i + 1) + '. ' + text + phaseTag + (t.safeOnly ? ' [SADECE bıçak/sıcak yağ/ateş içermeyen adımda ver]' : '');
   }).join('\n');
 
   return `Sen 2 kişilik bir yemek oyunu için TARİF ve CHALLENGE üreten bir asistansın.
@@ -367,10 +407,18 @@ ${prevList.map((n) => '  • ' + n).join('\n')}
 
 ═══ MOD ═══
 ${isGundelik ? `GÜNDELİK: Pratik ev yemeği. 5-6 adım. 20-30 dakika. Tek tencere/tava. Teknik gösteri yok.` : `ŞEF: Gündelikten FARKLI, daha iddialı ama yine GERÇEK bir yemek. ÖNCE aynı malzemelerle yapılabilen dünya mutfağı klasiklerini ve özgün isimli yemekleri düşün; en bilindik ev yemeği versiyonunu VERME. Yemeğin adını özgün haliyle yaz — "Acılı Makarna", "Salçalı Pilav" gibi jenerik/sıradan adlar şef modunda YASAK; o yemeğin gastronomideki gerçek adı neyse onu kullan. DİKKAT: kulağa yabancı gelen isim UYDURMA da yasak — isim, gastronomide gerçekten var olan bir yemeğin adı olmalı (örn. makarna+salça için "Spaghetti all'Assassina" gerçek ve mükemmel bir şef modu seçimidir; "Spaghetti al Doppio Concentrato" diye bir yemek yoktur, uydurmadır). 8-12 adım. 45-90 dakika. Son adım her zaman SUNUM.`}
+${isDatenight ? `
+═══ DATE NIGHT PAKETİ (ÖZEL MOD) ═══
+Bu oyun romantik bir çift akşamı olarak oynanıyor. İki ek kural:
+- YEMEK SEÇİMİ: Verilen malzemelerle yapılabilen, iki kişilik romantik bir akşam yemeğine yakışan, sunumu özenli bir yemek seç (malzeme kuralları aynen geçerli). description alanında yemeği "bu gece için" havasında, sıcak bir cümleyle tanıt.
+- GÖREV ZAMANLAMASI: Her aday görevin başında bir faz etiketi var. triggerAtStep değerlerini bu etiketlere göre ata: [BAŞLANGIÇ] → ilk üçte birdeki adımlar, [ORTA] → orta adımlar, [KIVILCIM] → son üçte birdeki adımlar, [SERVİS] → tarifin SON adımı. Gece doğal bir date gibi ilerlesin: tatlı başlar, giderek ısınır, sofrayla taçlanır.` : ''}
 
 ═══ CHALLENGE GÖREVLERİ ═══
-Amaç: ${cookName}'i eğlendirmek, "beraber başardık" hissi. Yemeği ASLA bozmamak.
-Görev sayısı: ${isGundelik ? '1 ana + 2-3 yan görev (toplam 3-4)' : '3 ana + 2-3 yan görev. Son görev sunum.'}
+${isDatenight
+  ? `Amaç: ${cookName} ile ${challengerName}'in romantik, samimi ve eğlenceli bir akşam geçirmesi. Yemeği ASLA bozmamak, kimseyi utandırmamak.
+Görev sayısı: ${isGundelik ? '2 ana + 2-3 yan görev (toplam 4-5)' : '3 ana + 2-3 yan görev. Son görev [SERVİS] etiketli olmalı.'}`
+  : `Amaç: ${cookName}'i eğlendirmek, "beraber başardık" hissi. Yemeği ASLA bozmamak.
+Görev sayısı: ${isGundelik ? '1 ana + 2-3 yan görev (toplam 3-4)' : '3 ana + 2-3 yan görev. Son görev sunum.'}`}
 
 İZİN VERİLEN GÖREVLER (SADECE bu listeden seç, listede olmayan görev uydurma; seçtiklerini ${cookName} ve yemeğin adımlarına göre kişiselleştir):
 ${candidateLines}
@@ -378,7 +426,9 @@ ${prevTasks.length ? `
 DAHA ÖNCE VERİLEN GÖREVLER (bunları ve çok benzerlerini TEKRAR VERME, listeden farklı olanları seç):
 ${prevTasks.map((t) => '  • ' + t).join('\n')}
 ` : ''}
-YASAK GÖREVLER: Romantik/duygusal, fiziksel temas, kamera/kayıt, ateş/süre/pişirme kararı verdirme, slow motion, fısıltı, kişisel/utandırıcı soru sordurma, malzeme havaya atma/fiziksel akrobasi, bağırtma. Listedeki görevler DIŞINDA hiçbir şey.
+${isDatenight
+  ? `YASAK GÖREVLER: Müstehcen/açık saçık içerik, rahatsız edici kişisel sorular, kamera/kayıt, ateş/süre/pişirme kararı verdirme, malzeme havaya atma/fiziksel akrobasi. Görevler flörtöz ve tatlı kalabilir ama ASLA açık saçıklaşmaz. Listedeki görevler DIŞINDA hiçbir şey. Güvenlik etiketli görevleri bıçak/sıcak yağ/ateş adımlarına verme.`
+  : `YASAK GÖREVLER: Romantik/duygusal, fiziksel temas, kamera/kayıt, ateş/süre/pişirme kararı verdirme, slow motion, fısıltı, kişisel/utandırıcı soru sordurma, malzeme havaya atma/fiziksel akrobasi, bağırtma. Listedeki görevler DIŞINDA hiçbir şey.`}
 
 ═══ JSON FORMATI ═══
 {
@@ -399,9 +449,12 @@ YASAK GÖREVLER: Romantik/duygusal, fiziksel temas, kamera/kayıt, ateş/süre/p
 }`;
 }
 
-function buildPromptEn(ingredients, difficulty, isGundelik, cookName, challengerName, seed, prevList, prevTasks, taskCandidates) {
+function buildPromptEn(ingredients, difficulty, isGundelik, cookName, challengerName, seed, prevList, prevTasks, taskCandidates, pack) {
+  const isDatenight = pack === 'datenight';
   const candidateLines = taskCandidates.map(function (t, i) {
-    return (i + 1) + '. ' + t.text + (t.safeOnly ? ' [ONLY give during a step with no knife/hot oil/fire]' : '');
+    const text = isDatenight ? fillNames(t.text, cookName, challengerName) : t.text;
+    const phaseTag = isDatenight && t.phase ? ' ' + PHASE_TAG_EN[t.phase] : '';
+    return (i + 1) + '. ' + text + phaseTag + (t.safeOnly ? ' [ONLY give during a step with no knife/hot oil/fire]' : '');
   }).join('\n');
 
   return `You generate a RECIPE and CHALLENGE tasks for a 2-player cooking game.
@@ -445,10 +498,18 @@ ${prevList.map((n) => '  • ' + n).join('\n')}
 
 ═══ MODE ═══
 ${isGundelik ? `EVERYDAY: Practical home meal. 5-6 steps. 20-30 minutes. One pot/pan. No showing off.` : `CHEF: DIFFERENT from everyday, more ambitious but still a REAL dish. Think of international classics; avoid the most basic home version. 8-12 steps. 45-90 minutes. The last step is always PLATING.`}
+${isDatenight ? `
+═══ DATE NIGHT PACK (SPECIAL MODE) ═══
+This game is being played as a romantic couples' evening. Two extra rules:
+- DISH CHOICE: With the given ingredients (ingredient rules still fully apply), pick a dish that suits a romantic dinner for two, with care given to presentation. In the description field, introduce the dish warmly, as "made for tonight".
+- TASK SCHEDULING: Each candidate task carries a phase tag. Assign triggerAtStep accordingly: [OPENING] → steps in the first third, [MIDDLE] → middle steps, [SPARK] → steps in the final third, [SERVICE] → the LAST step of the recipe. The night should build like a real date: sweet at first, warming up as it goes, crowned at the table.` : ''}
 
 ═══ CHALLENGE TASKS ═══
-Goal: entertain ${cookName}, create a "we did it together" feeling. NEVER ruin the food.
-Number of tasks: ${isGundelik ? '1 main + 2-3 side tasks (3-4 total)' : '3 main + 2-3 side tasks. Last task is plating.'}
+${isDatenight
+  ? `Goal: give ${cookName} and ${challengerName} a romantic, intimate and fun evening. NEVER ruin the food, never embarrass anyone.
+Number of tasks: ${isGundelik ? '2 main + 2-3 side tasks (4-5 total)' : '3 main + 2-3 side tasks. The last task must be a [SERVICE]-tagged one.'}`
+  : `Goal: entertain ${cookName}, create a "we did it together" feeling. NEVER ruin the food.
+Number of tasks: ${isGundelik ? '1 main + 2-3 side tasks (3-4 total)' : '3 main + 2-3 side tasks. Last task is plating.'}`}
 
 ALLOWED TASKS (choose ONLY from this list, do not invent tasks not on it; personalize the chosen ones to ${cookName} and the recipe steps):
 ${candidateLines}
@@ -456,7 +517,9 @@ ${prevTasks.length ? `
 PREVIOUSLY GIVEN TASKS (do NOT repeat these or very similar ones, pick different ones from the list):
 ${prevTasks.map((t) => '  • ' + t).join('\n')}
 ` : ''}
-FORBIDDEN TASKS: romantic/emotional, physical contact, camera/recording, decisions about heat/time/cooking, slow motion, whispering, personal/embarrassing questions, throwing ingredients/physical acrobatics, shouting. Nothing outside the list above.
+${isDatenight
+  ? `FORBIDDEN TASKS: explicit/sexual content, uncomfortable personal questions, camera/recording, decisions about heat/time/cooking, throwing ingredients/physical acrobatics. Tasks may stay flirty and sweet but NEVER explicit. Nothing outside the list above. Never assign safety-tagged tasks to knife/hot-oil/fire steps.`
+  : `FORBIDDEN TASKS: romantic/emotional, physical contact, camera/recording, decisions about heat/time/cooking, slow motion, whispering, personal/embarrassing questions, throwing ingredients/physical acrobatics, shouting. Nothing outside the list above.`}
 
 ═══ JSON FORMAT ═══
 {

@@ -22,6 +22,7 @@ import { useAudioPlayer } from 'expo-audio';
 import { dingSource } from '../utils/SoundManager';
 import { celebrationPattern } from '../utils/HapticManager';
 import { useLang } from '../i18n';
+import { maybeAskForReview } from '../utils/reviewAsk';
 
 var screenWidth = Dimensions.get('window').width;
 
@@ -270,11 +271,18 @@ export default function ResultScreen(props) {
   var handleCookRating = function (star) {
     setCookRating(star);
     updateRatings(star, challengerRating);
+    // İki puan da verildiyse mutlu an: mağaza puanlama isteğini dene
+    if (challengerRating > 0) {
+      setTimeout(function () { maybeAskForReview(t); }, 1200);
+    }
   };
 
   var handleChallengerRating = function (star) {
     setChallengerRating(star);
     updateRatings(cookRating, star);
+    if (cookRating > 0) {
+      setTimeout(function () { maybeAskForReview(t); }, 1200);
+    }
   };
 
   var takePhoto = async function () {
