@@ -27,9 +27,12 @@ import { maybeAskForReview } from '../utils/reviewAsk';
 
 var screenWidth = Dimensions.get('window').width;
 
+var HEART_IMG = require('../assets/datenight/heart.png');
+
 function ConfettiPiece(props) {
   var delay = props.delay;
   var startX = props.startX;
+  var isDn = props.isDn;
 
   var fallAnim = useRef(new Animated.Value(-20)).current;
   var rotateAnim = useRef(new Animated.Value(0)).current;
@@ -40,6 +43,8 @@ function ConfettiPiece(props) {
   var pieceStyle = useRef({
     color: ['#FFD93D', '#FF6B35', '#4ECDC4', '#E74C3C', '#9B59B6', '#3498DB', '#2ECC71'][Math.floor(Math.random() * 7)],
     size: 8 + Math.random() * 8,
+    heartSize: 14 + Math.random() * 14,
+    heartOpacity: 0.75 + Math.random() * 0.25,
   }).current;
   var color = pieceStyle.color;
   var size = pieceStyle.size;
@@ -62,6 +67,26 @@ function ConfettiPiece(props) {
     }, delay);
     return function () { clearTimeout(timeout); };
   }, []);
+
+  if (isDn) {
+    // Date Night: konfeti yerine kalp yağmuru (tema görseli, emoji değil).
+    // Kalp fırıl fırıl dönmez; yaprak gibi hafifçe salınarak süzülür.
+    return (
+      <Animated.View
+        style={{
+          position: 'absolute', left: startX, top: 0,
+          opacity: Animated.multiply(opacityAnim, pieceStyle.heartOpacity),
+          transform: [
+            { translateY: fallAnim },
+            { translateX: swayAnim },
+            { rotate: swayAnim.interpolate({ inputRange: [-30, 30], outputRange: ['-18deg', '18deg'] }) },
+          ],
+        }}
+      >
+        <Image source={HEART_IMG} style={{ width: pieceStyle.heartSize, height: pieceStyle.heartSize * 0.87 }} resizeMode="contain" />
+      </Animated.View>
+    );
+  }
 
   return (
     <Animated.View
@@ -444,7 +469,7 @@ export default function ResultScreen(props) {
 
       <View style={styles.confettiContainer} pointerEvents="none">
         {confettiPieces.map(function (p) {
-          return <ConfettiPiece key={p.id} delay={p.delay} startX={p.startX} />;
+          return <ConfettiPiece key={p.id} delay={p.delay} startX={p.startX} isDn={isDn} />;
         })}
       </View>
 

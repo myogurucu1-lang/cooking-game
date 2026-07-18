@@ -12,11 +12,12 @@ var screenHeight = Dimensions.get('window').height;
 
 var TOMATO_IMG = require('../assets/datenight/tomato.png');
 var ONION_IMG = require('../assets/datenight/onion.png');
+var HEART_IMG = require('../assets/datenight/heart.png');
 
 var CHARACTER_SIZE = 110;
 var MEET_Y = screenHeight * 0.30;      // buluşma yüksekliği
 var ORBIT_RADIUS = 62;                 // vals yörünge yarıçapı
-var ENTRANCE_MS = 2600;                // yavaş giriş süresi
+var ENTRANCE_MS = 1200;                // giriş süresi (kısa: vals, tarif gelmeden görünsün)
 var ORBIT_MS = 11000;                  // tam tur süresi (yavaş vals)
 
 // Tek bir yükselen kalp: doğar, süzülerek yükselir, soluklaşır
@@ -30,13 +31,11 @@ function RisingHeart(props) {
   }, []);
 
   return (
-    <Animated.Text
+    <Animated.View
       style={{
         position: 'absolute',
         left: props.x,
         top: props.y,
-        fontSize: props.size,
-        color: props.color,
         opacity: rise.interpolate({ inputRange: [0, 0.15, 0.7, 1], outputRange: [0, 0.9, 0.7, 0] }),
         transform: [
           { translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [0, -130] }) },
@@ -45,8 +44,8 @@ function RisingHeart(props) {
         ],
       }}
     >
-      ♥
-    </Animated.Text>
+      <Image source={HEART_IMG} style={{ width: props.size, height: props.size * 0.87 }} resizeMode="contain" />
+    </Animated.View>
   );
 }
 
@@ -136,8 +135,8 @@ export default function DateNightDance() {
             color: HEART_COLORS[Math.floor(Math.random() * HEART_COLORS.length)],
           }]);
         });
-      }, 900);
-    }, ENTRANCE_MS + 150);
+      }, 700);
+    }, ENTRANCE_MS + 100);
 
     return function () {
       bounceLoop.stop();

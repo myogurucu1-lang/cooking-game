@@ -118,7 +118,8 @@ function CharacterCard(props) {
   );
 }
 
-function PulseVS() {
+function PulseVS(props) {
+  var isDn = props.isDn;
   var pulseAnim = useRef(new Animated.Value(1)).current;
   var glowAnim = useRef(new Animated.Value(0.2)).current;
   var rotateAnim = useRef(new Animated.Value(0)).current;
@@ -169,8 +170,8 @@ function PulseVS() {
       <Animated.Text style={[styles.vsSpark, { top: -8, right: -2, opacity: sparkAnim1, transform: [{ scale: sparkAnim1 }] }]}>✦</Animated.Text>
       <Animated.Text style={[styles.vsSpark, { bottom: -6, left: -4, opacity: sparkAnim2, transform: [{ scale: sparkAnim2 }] }]}>✦</Animated.Text>
       <Animated.View style={[styles.vsBadge, { transform: [{ scale: pulseAnim.interpolate({ inputRange: [1, 1.3], outputRange: [1, 1.1] }) }] }]}>
-        <LinearGradient colors={['#FF6B35', '#E85D26', '#D44F1C']} style={styles.vsBadgeGradient}>
-          <Text style={styles.vsText}>VS</Text>
+        <LinearGradient colors={isDn ? ['#8B2E44', '#5C1A2B', '#3A1420'] : ['#FF6B35', '#E85D26', '#D44F1C']} style={styles.vsBadgeGradient}>
+          {isDn ? <Ionicons name="heart" size={20} color="#E8B4A0" /> : <Text style={styles.vsText}>VS</Text>}
         </LinearGradient>
       </Animated.View>
     </View>
@@ -306,7 +307,7 @@ export default function SetupScreen(props) {
 
             <View style={styles.cardsRow}>
               <CharacterCard image={isDn ? require('../assets/datenight/cook.png') : require('../assets/cook.png')} label="COOK" name={cookName} onChangeName={setCookName} animDelay={200} accentColor={isDn ? DN.gold : '#4ECDC4'} />
-              <PulseVS />
+              <PulseVS isDn={isDn} />
               <CharacterCard image={isDn ? require('../assets/datenight/challenger.png') : require('../assets/challenger.png')} label="CHALLENGER" name={challengerName} onChangeName={setChallengerName} animDelay={400} accentColor={isDn ? DN.rosePink : '#FF6B35'} />
             </View>
 
