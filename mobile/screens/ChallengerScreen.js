@@ -95,6 +95,7 @@ export default function ChallengerScreen(props) {
   var cookName = route.params.cookName;
   var challengerName = route.params.challengerName;
   var challengerTasks = route.params.challengerTasks || [];
+  var isDn = (route.params.pack || 'classic') === 'datenight';
 
   // Görevleri adım sırasına göre diz (adımsızlar en sona); aynı adımda ana görev önce
   var tasks = challengerTasks.slice().sort(function (a, b) {
@@ -121,7 +122,7 @@ export default function ChallengerScreen(props) {
         storageKey="challengerTutorialSeen"
       />
 
-      <LinearGradient colors={['#4ECDC4', '#3AB8B0']} style={[styles.header, { paddingTop: 12 + insets.top }]}>
+      <LinearGradient colors={isDn ? ['#8B2E44', '#5C1A2B'] : ['#4ECDC4', '#3AB8B0']} style={[styles.header, { paddingTop: 12 + insets.top }]}>
         <Animated.View style={[styles.headerContent, {
           opacity: headerAnim,
           transform: [{ translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] }) }],

@@ -20,6 +20,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SHADOW } from '../theme';
 import DrawerMenu from '../components/DrawerMenu';
 import { useLang } from '../i18n';
+import { DATENIGHT_UNLOCKED, DN } from '../utils/packs';
+import { Alert } from 'react-native';
 
 var screenWidth = Dimensions.get('window').width;
 
@@ -196,6 +198,20 @@ export default function SetupScreen(props) {
   var difficulty = difficultyState[0];
   var setDifficulty = difficultyState[1];
 
+  // Paket seçimi: 'classic' | 'datenight'
+  var packState = useState('classic');
+  var pack = packState[0];
+  var setPack = packState[1];
+  var isDn = pack === 'datenight';
+
+  var selectPack = function (newPack) {
+    if (newPack === 'datenight' && !DATENIGHT_UNLOCKED) {
+      Alert.alert(t('pack.lockedTitle'), t('pack.lockedMsg'), [{ text: t('pack.lockedOk') }]);
+      return;
+    }
+    setPack(newPack);
+  };
+
   var drawerState = useState(false);
   var drawerVisible = drawerState[0];
   var setDrawerVisible = drawerState[1];
@@ -235,7 +251,7 @@ export default function SetupScreen(props) {
 
   var startGame = function () {
     if (!canStart) return;
-    navigation.navigate('Transition', { ingredients: ingredients.trim(), difficulty: difficulty, cookName: cookName.trim(), challengerName: challengerName.trim() });
+    navigation.navigate('Transition', { ingredients: ingredients.trim(), difficulty: difficulty, cookName: cookName.trim(), challengerName: challengerName.trim(), pack: pack });
   };
 
   var openDrawer = function () {
@@ -251,27 +267,47 @@ export default function SetupScreen(props) {
   };
 
   return (
-    <ImageBackground source={require('../assets/background.jpg')} style={styles.bgImage} resizeMode="cover">
-      <StatusBar style="dark" />
-      <View style={styles.overlay} />
+    <ImageBackground source={isDn ? require('../assets/datenight/bg-kitchen.png') : require('../assets/background.jpg')} style={styles.bgImage} resizeMode="cover">
+      <StatusBar style={isDn ? 'light' : 'dark'} />
+      <View style={[styles.overlay, isDn && styles.overlayDn]} />
 
       <View style={styles.safeArea}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
           <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 64 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
             <Animated.View style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-              <Text style={styles.titleIcon}>👨‍🍳</Text>
-              <Text style={styles.title}>COOKING</Text>
-              <LinearGradient colors={['#FF6B35', '#E85D26']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.subtitleBadge}>
+              <Text style={styles.titleIcon}>{isDn ? '🥂' : '👨‍🍳'}</Text>
+              <Text style={[styles.title, isDn && styles.titleDn]}>COOKING</Text>
+              <LinearGradient colors={isDn ? [DN.bordo, DN.bordoDeep] : ['#FF6B35', '#E85D26']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.subtitleBadge}>
                 <Text style={styles.subtitle}>CHALLENGE</Text>
               </LinearGradient>
-              <Text style={styles.tagline}>{t('setup.tagline')}</Text>
+              <Text style={[styles.tagline, isDn && styles.taglineDn]}>{t(isDn ? 'setup.taglineDn' : 'setup.tagline')}</Text>
             </Animated.View>
 
+            {/* Paket seçici */}
+            <View style={styles.packRow}>
+              <TouchableOpacity
+                style={[styles.packChip, !isDn && styles.packChipActive]}
+                onPress={function () { selectPack('classic'); }}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="restaurant" size={14} color={!isDn ? '#FFFFFF' : '#8A7069'} />
+                <Text style={[styles.packChipText, !isDn && styles.packChipTextActive]}>{t('pack.classic')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.packChip, isDn && styles.packChipActiveDn]}
+                onPress={function () { selectPack('datenight'); }}
+                activeOpacity={0.85}
+              >
+                <Ionicons name={DATENIGHT_UNLOCKED ? 'heart' : 'lock-closed'} size={14} color={isDn ? '#FFFFFF' : '#8A7069'} />
+                <Text style={[styles.packChipText, isDn && styles.packChipTextActive]}>{t('pack.datenight')}</Text>
+              </TouchableOpacity>
+            </View>
+
             <View style={styles.cardsRow}>
-              <CharacterCard image={require('../assets/cook.png')} label="COOK" name={cookName} onChangeName={setCookName} animDelay={200} accentColor="#4ECDC4" />
+              <CharacterCard image={isDn ? require('../assets/datenight/cook.png') : require('../assets/cook.png')} label="COOK" name={cookName} onChangeName={setCookName} animDelay={200} accentColor={isDn ? DN.gold : '#4ECDC4'} />
               <PulseVS />
-              <CharacterCard image={require('../assets/challenger.png')} label="CHALLENGER" name={challengerName} onChangeName={setChallengerName} animDelay={400} accentColor="#FF6B35" />
+              <CharacterCard image={isDn ? require('../assets/datenight/challenger.png') : require('../assets/challenger.png')} label="CHALLENGER" name={challengerName} onChangeName={setChallengerName} animDelay={400} accentColor={isDn ? DN.rosePink : '#FF6B35'} />
             </View>
 
             <Animated.View style={[styles.section, { opacity: fadeAnim }]}>
@@ -279,7 +315,7 @@ export default function SetupScreen(props) {
                 <View style={styles.sectionIconBg}>
                   <Ionicons name="restaurant" size={16} color="#FFFFFF" />
                 </View>
-                <Text style={styles.sectionTitle}>{t('setup.ingredients')}</Text>
+                <Text style={[styles.sectionTitle, isDn && { color: '#F0DAD0' }]}>{t('setup.ingredients')}</Text>
               </View>
               <View style={styles.glassCard}>
                 <TextInput
@@ -299,7 +335,7 @@ export default function SetupScreen(props) {
                 <View style={[styles.sectionIconBg, { backgroundColor: '#FF6B35' }]}>
                   <Ionicons name="flame" size={16} color="#FFFFFF" />
                 </View>
-                <Text style={styles.sectionTitle}>{t('setup.difficulty')}</Text>
+                <Text style={[styles.sectionTitle, isDn && { color: '#F0DAD0' }]}>{t('setup.difficulty')}</Text>
               </View>
               <View style={styles.levelRow}>
                 <TouchableOpacity
@@ -307,8 +343,8 @@ export default function SetupScreen(props) {
                   onPress={function () { setDifficulty('gundelik'); }}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.levelEmoji}>🍳</Text>
-                  <Text style={[styles.levelTitle, difficulty === 'gundelik' && styles.levelTitleActive]}>{t('setup.everyday')}</Text>
+                  <Text style={styles.levelEmoji}>{isDn ? '🕯️' : '🍳'}</Text>
+                  <Text style={[styles.levelTitle, difficulty === 'gundelik' && styles.levelTitleActive]}>{t(isDn ? 'setup.everydayDn' : 'setup.everyday')}</Text>
                   <Text style={[styles.levelDesc, difficulty === 'gundelik' && styles.levelDescActive]}>{t('setup.everydayTime')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -316,8 +352,8 @@ export default function SetupScreen(props) {
                   onPress={function () { setDifficulty('sef'); }}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.levelEmoji}>👨‍🍳</Text>
-                  <Text style={[styles.levelTitle, difficulty === 'sef' && styles.levelTitleActive]}>{t('setup.chef')}</Text>
+                  <Text style={styles.levelEmoji}>{isDn ? '🍷' : '👨‍🍳'}</Text>
+                  <Text style={[styles.levelTitle, difficulty === 'sef' && styles.levelTitleActive]}>{t(isDn ? 'setup.chefDn' : 'setup.chef')}</Text>
                   <Text style={[styles.levelDesc, difficulty === 'sef' && styles.levelDescActive]}>{t('setup.chefTime')}</Text>
                 </TouchableOpacity>
               </View>
@@ -332,13 +368,13 @@ export default function SetupScreen(props) {
               >
                 {canStart ? <Animated.View style={[styles.startBtnGlow, { opacity: btnGlow }]} /> : null}
                 <LinearGradient
-                  colors={canStart ? ['#FF6B35', '#E85D26'] : ['#BBAA99', '#AA9988']}
+                  colors={canStart ? (isDn ? [DN.bordo, DN.bordoDeep] : ['#FF6B35', '#E85D26']) : ['#BBAA99', '#AA9988']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.startBtnGradient}
                 >
-                  <Ionicons name="play-circle" size={26} color="#FFFFFF" />
-                  <Text style={styles.startText}>{t('setup.start')}</Text>
+                  <Ionicons name={isDn ? 'heart-circle' : 'play-circle'} size={26} color="#FFFFFF" />
+                  <Text style={styles.startText}>{t(isDn ? 'setup.startDn' : 'setup.start')}</Text>
                   <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
                 </LinearGradient>
               </TouchableOpacity>
@@ -372,6 +408,7 @@ export default function SetupScreen(props) {
 var styles = StyleSheet.create({
   bgImage: { flex: 1, width: '100%', height: '100%' },
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,248,240,0.35)' },
+  overlayDn: { backgroundColor: 'rgba(28,19,21,0.52)' },
   safeArea: { flex: 1 },
   keyboardView: { flex: 1 },
   scrollContent: { padding: 20 },
@@ -408,6 +445,20 @@ var styles = StyleSheet.create({
   subtitleBadge: { paddingHorizontal: 22, paddingVertical: 7, borderRadius: 20, marginTop: 8 },
   subtitle: { fontSize: 14, fontWeight: '800', color: '#FFFFFF', letterSpacing: 6 },
   tagline: { fontSize: 13, color: '#8B6914', marginTop: 10, fontWeight: '600' },
+  titleDn: { color: '#FBEEE8', textShadowColor: 'rgba(0,0,0,0.45)' },
+  taglineDn: { color: '#D4A857' },
+
+  // Paket seçici
+  packRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 18 },
+  packChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingVertical: 9, paddingHorizontal: 18, borderRadius: 999,
+    backgroundColor: 'rgba(255,252,248,0.85)', borderWidth: 1, borderColor: 'rgba(140,110,90,0.25)',
+  },
+  packChipActive: { backgroundColor: '#FF6B35', borderColor: '#E85D26' },
+  packChipActiveDn: { backgroundColor: '#8B2E44', borderColor: '#E8B4A0' },
+  packChipText: { fontSize: 13, fontWeight: '800', color: '#8A7069' },
+  packChipTextActive: { color: '#FFFFFF' },
   cardsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
   cardWrapper: { flex: 1 },
   card: { borderRadius: 22, paddingTop: 0, paddingBottom: 16, paddingHorizontal: 12, alignItems: 'center', overflow: 'hidden', backgroundColor: 'rgba(255,252,248,0.82)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.7)', shadowColor: '#8B6914', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 6 },

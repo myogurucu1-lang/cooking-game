@@ -18,6 +18,7 @@ export default function TransitionScreen(props) {
   var challengerName = route.params.challengerName;
   var ingredients = route.params.ingredients;
   var difficulty = route.params.difficulty;
+  var pack = route.params.pack || 'classic';
 
   var messageState = useState(0);
   var messageIndex = messageState[0];
@@ -160,6 +161,7 @@ export default function TransitionScreen(props) {
             previousRecipes: previousRecipes,
             previousTasks: previousTasks,
             language: getLanguage(),
+            pack: pack === 'datenight' ? 'datenight' : undefined,
           }),
         }, 35000);
 
@@ -189,6 +191,7 @@ export default function TransitionScreen(props) {
           challengerName: challengerName,
           ingredients: ingredients,
           difficulty: difficulty,
+          pack: pack,
           recipe: data,
         });
       } catch (error) {

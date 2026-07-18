@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet, Text, View, ScrollView,
-  TouchableOpacity, Animated, Dimensions, Vibration, Alert,
+  TouchableOpacity, Animated, Dimensions, Vibration, Alert, Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -196,6 +196,8 @@ export default function CookScreen(props) {
   var ingredients = route.params.ingredients;
   var difficulty = route.params.difficulty;
   var recipe = route.params.recipe;
+  var pack = route.params.pack || 'classic';
+  var isDn = pack === 'datenight';
 
   var recipeData = recipe && recipe.recipe ? recipe.recipe : recipe;
   var challengerTasks = recipe && recipe.challengerTasks ? recipe.challengerTasks : [];
@@ -441,6 +443,7 @@ export default function CookScreen(props) {
       challengerName: challengerName,
       challengerTasks: challengerTasks,
       recipe: recipeData,
+      pack: pack,
     });
   };
 
@@ -449,6 +452,7 @@ export default function CookScreen(props) {
       cookName: cookName,
       challengerName: challengerName,
       difficulty: difficulty,
+      pack: pack,
       recipeName: recipeData && recipeData.name ? recipeData.name : 'Tarif',
       totalSteps: steps.length,
       completedSteps: completedSteps.length,
@@ -466,11 +470,23 @@ export default function CookScreen(props) {
   };
 
   return (
-    <View style={styles.container} ref={rootRef}>
+    <View style={[styles.container, isDn && { backgroundColor: '#1C1315' }]} ref={rootRef}>
+      {isDn ? (
+        <>
+          {/* Date Night: buzlu bordo mutfak arka planı + renk filtresi */}
+          <Image
+            source={require('../assets/datenight/bg-kitchen.png')}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', opacity: 0.5 }}
+            resizeMode="cover"
+            blurRadius={14}
+          />
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(58,20,32,0.6)' }} />
+        </>
+      ) : null}
       <View style={styles.safeArea}>
       <StatusBar style="light" />
 
-      <LinearGradient colors={[COLORS.primary, COLORS.primaryDark]} style={[styles.header, { paddingTop: 12 + insets.top }]}>
+      <LinearGradient colors={isDn ? ['#8B2E44', '#3A1420'] : [COLORS.primary, COLORS.primaryDark]} style={[styles.header, { paddingTop: 12 + insets.top }]}>
         <Animated.View style={[styles.headerContent, {
           opacity: headerAnim,
           transform: [{ translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] }) }],
@@ -534,7 +550,7 @@ export default function CookScreen(props) {
             <TouchableOpacity onPress={function () { setShowIngredients(!showIngredients); }} style={styles.sectionHeader} activeOpacity={0.7}>
               <View style={styles.sectionTitleRow}>
                 <Text style={styles.sectionEmoji}>🥘</Text>
-                <Text style={styles.sectionTitle}>{t('cook.ingredients')}</Text>
+                <Text style={[styles.sectionTitle, isDn && { color: '#F0DAD0' }]}>{t('cook.ingredients')}</Text>
                 <View style={styles.countBadge}>
                   <Text style={styles.countText}>{ingredientList.length}</Text>
                 </View>
@@ -555,7 +571,7 @@ export default function CookScreen(props) {
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
             <Text style={styles.sectionEmoji}>📝</Text>
-            <Text style={styles.sectionTitle}>{t('cook.steps')}</Text>
+            <Text style={[styles.sectionTitle, isDn && { color: '#F0DAD0' }]}>{t('cook.steps')}</Text>
           </View>
 
           {steps.length > 0 ? (

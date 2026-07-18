@@ -172,6 +172,8 @@ export default function ResultScreen(props) {
   var cookName = route.params.cookName;
   var challengerName = route.params.challengerName;
   var difficulty = route.params.difficulty;
+  var pack = route.params.pack || 'classic';
+  var isDn = pack === 'datenight';
   var recipeName = route.params.recipeName;
   var totalSteps = route.params.totalSteps;
   var completedSteps = route.params.completedSteps;
@@ -425,8 +427,19 @@ export default function ResultScreen(props) {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isDn && { backgroundColor: '#1C1315' }]}>
       <StatusBar style="light" />
+      {isDn ? (
+        <>
+          {/* Date Night: kurulu masa arka planı + hafif bordo katman */}
+          <Image
+            source={require('../assets/datenight/bg-table.png')}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }}
+            resizeMode="cover"
+          />
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(28,19,21,0.5)' }} />
+        </>
+      ) : null}
 
       <View style={styles.confettiContainer} pointerEvents="none">
         {confettiPieces.map(function (p) {
@@ -436,16 +449,16 @@ export default function ResultScreen(props) {
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        <LinearGradient colors={[COLORS.primary, COLORS.primaryDark]} style={[styles.celebrationHeader, { paddingTop: 34 + insets.top }]}>
+        <LinearGradient colors={isDn ? ['rgba(139,46,68,0.92)', 'rgba(58,20,32,0.92)'] : [COLORS.primary, COLORS.primaryDark]} style={[styles.celebrationHeader, { paddingTop: 34 + insets.top }]}>
           <Animated.View style={{ opacity: titleAnim, alignItems: 'center', transform: [{ scale: titleAnim.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }] }}>
             <View style={styles.successIcon}>
-              <Ionicons name="restaurant" size={26} color="#FFFFFF" />
+              <Ionicons name={isDn ? 'heart' : 'restaurant'} size={26} color={isDn ? '#E8B4A0' : '#FFFFFF'} />
             </View>
-            <Text style={styles.celebrationTitle}>{t('res.title')}</Text>
+            <Text style={styles.celebrationTitle}>{t(isDn ? 'res.titleDn' : 'res.title')}</Text>
           </Animated.View>
           <Animated.View style={{ opacity: subtitleAnim, alignItems: 'center' }}>
             <Text style={styles.celebrationRecipe}>{recipeName}</Text>
-            <Text style={styles.celebrationSubtitle}>{t('res.subtitle', { cook: cookName, challenger: challengerName })}</Text>
+            <Text style={styles.celebrationSubtitle}>{t(isDn ? 'res.subtitleDn' : 'res.subtitle', { cook: cookName, challenger: challengerName })}</Text>
           </Animated.View>
         </LinearGradient>
 
@@ -453,13 +466,13 @@ export default function ResultScreen(props) {
           <StatItem icon="list-outline" value={completedSteps + '/' + totalSteps} label={t('res.statStep')} color={COLORS.primary} />
           <StatItem icon="flash-outline" value={String(totalTasks)} label={t('res.statTask')} color={COLORS.secondary} />
           <StatItem icon="time-outline" value={prepTime || '—'} label={t('res.statTime')} color="#9B59B6" />
-          <StatItem icon="restaurant-outline" value={difficulty === 'sef' ? t('setup.chef') : t('setup.everyday')} label={t('res.statDifficulty')} color="#E74C3C" />
+          <StatItem icon="restaurant-outline" value={difficulty === 'sef' ? t(isDn ? 'setup.chefDn' : 'setup.chef') : t(isDn ? 'setup.everydayDn' : 'setup.everyday')} label={t('res.statDifficulty')} color="#E74C3C" />
         </View>
 
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeaderRow}>
             <Ionicons name="camera-outline" size={18} color={COLORS.primary} />
-            <Text style={styles.sectionTitle}>{t('res.photoSection')}</Text>
+            <Text style={[styles.sectionTitle, isDn && { color: '#F0DAD0' }]}>{t('res.photoSection')}</Text>
           </View>
           {photoUri ? (
             <View style={styles.photoPreviewContainer}>
@@ -490,7 +503,7 @@ export default function ResultScreen(props) {
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeaderRow}>
             <Ionicons name="ribbon-outline" size={18} color={COLORS.primary} />
-            <Text style={styles.sectionTitle}>{t('res.badges')}</Text>
+            <Text style={[styles.sectionTitle, isDn && { color: '#F0DAD0' }]}>{t('res.badges')}</Text>
           </View>
           <View style={styles.badgesGrid}>
             {badges.map(function (badge, index) {
@@ -502,7 +515,7 @@ export default function ResultScreen(props) {
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeaderRow}>
             <Ionicons name="star-outline" size={18} color={COLORS.primary} />
-            <Text style={styles.sectionTitle}>{t('res.ratingSection')}</Text>
+            <Text style={[styles.sectionTitle, isDn && { color: '#F0DAD0' }]}>{t('res.ratingSection')}</Text>
           </View>
           <View style={styles.ratingsContainer}>
             <StarRating label={t('res.cookPerf')} playerName={cookName} rating={cookRating} onRate={handleCookRating} />
