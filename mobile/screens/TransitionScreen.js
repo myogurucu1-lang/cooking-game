@@ -5,9 +5,11 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BACKEND_URL, APP_SECRET } from '../config';
 import ChaseAnimation from '../components/ChaseAnimation';
+import DateNightDance from '../components/DateNightDance';
 import { useLang, getLanguage } from '../i18n';
 
 var LOADING_KEYS = ['trans.loading1', 'trans.loading2', 'trans.loading3', 'trans.loading4', 'trans.loading5', 'trans.loading6'];
+var LOADING_KEYS_DN = ['trans.dn1', 'trans.dn2', 'trans.dn3', 'trans.dn4', 'trans.dn5'];
 
 export default function TransitionScreen(props) {
   var route = props.route;
@@ -20,6 +22,9 @@ export default function TransitionScreen(props) {
   var difficulty = route.params.difficulty;
   var pack = route.params.pack || 'classic';
 
+  var isDn = pack === 'datenight';
+  var loadingKeys = isDn ? LOADING_KEYS_DN : LOADING_KEYS;
+
   var messageState = useState(0);
   var messageIndex = messageState[0];
   var setMessageIndex = messageState[1];
@@ -27,7 +32,7 @@ export default function TransitionScreen(props) {
   useEffect(function () {
     var interval = setInterval(function () {
       setMessageIndex(function (prev) {
-        return (prev + 1) % LOADING_KEYS.length;
+        return (prev + 1) % loadingKeys.length;
       });
     }, 1200);
     return function () { clearInterval(interval); };
@@ -220,20 +225,30 @@ export default function TransitionScreen(props) {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ChaseAnimation />
+    <SafeAreaView style={[styles.container, isDn && styles.containerDn]}>
+      {isDn ? (
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          {/* Mum ışığı bokeh parıltıları */}
+          <View style={[styles.bokeh, { width: 70, height: 70, left: 30, top: 120, backgroundColor: 'rgba(212,168,87,0.35)' }]} />
+          <View style={[styles.bokeh, { width: 46, height: 46, right: 36, top: 210, backgroundColor: 'rgba(139,46,68,0.45)' }]} />
+          <View style={[styles.bokeh, { width: 34, height: 34, left: 60, bottom: 220, backgroundColor: 'rgba(232,180,160,0.30)' }]} />
+          <View style={[styles.bokeh, { width: 56, height: 56, right: 50, bottom: 300, backgroundColor: 'rgba(212,168,87,0.22)' }]} />
+        </View>
+      ) : null}
+
+      {isDn ? <DateNightDance /> : <ChaseAnimation />}
 
       <View style={styles.overlay}>
-        <Text style={styles.title}>{t('trans.title')}</Text>
-        <Text style={styles.subtitle}>{t(LOADING_KEYS[messageIndex])}</Text>
+        <Text style={styles.title}>{t(isDn ? 'trans.titleDn' : 'trans.title')}</Text>
+        <Text style={[styles.subtitle, isDn && { color: '#E8B4A0' }]}>{t(loadingKeys[messageIndex])}</Text>
         <View style={styles.dotsContainer}>
-          {LOADING_KEYS.map(function (_, i) {
+          {loadingKeys.map(function (_, i) {
             return (
               <View
                 key={i}
                 style={[
                   styles.dot,
-                  messageIndex === i && styles.dotActive,
+                  messageIndex === i && (isDn ? styles.dotActiveDn : styles.dotActive),
                 ]}
               />
             );
@@ -248,6 +263,17 @@ var styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FF7A45',
+  },
+  containerDn: {
+    backgroundColor: '#2A141B',
+  },
+  bokeh: {
+    position: 'absolute',
+    borderRadius: 999,
+  },
+  dotActiveDn: {
+    backgroundColor: '#E8B4A0',
+    width: 20,
   },
   overlay: {
     position: 'absolute',
