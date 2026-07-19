@@ -60,6 +60,15 @@ export default function DateNightDance() {
   var tomatoBounce = useRef(new Animated.Value(0)).current;
   var onionBounce = useRef(new Animated.Value(0)).current;
 
+  // Derinlik: öndeyken büyük (1.0), arkadayken küçük (0.86)
+  var tomatoScale = useRef(new Animated.Value(1)).current;
+  var onionScale = useRef(new Animated.Value(1)).current;
+
+  // Kim önde? (ekranda daha aşağıda olan üstte çizilir — dönüş hissinin anahtarı)
+  var frontState = useState('onion');
+  var front = frontState[0];
+  var setFront = frontState[1];
+
   var heartsState = useState([]);
   var hearts = heartsState[0];
   var setHearts = heartsState[1];
@@ -101,20 +110,34 @@ export default function DateNightDance() {
     var startTimer = setTimeout(function () {
       var startTime = Date.now();
 
+      var lastFront = 'onion';
       var update = function () {
         var elapsed = Date.now() - startTime;
         var angle = (elapsed / ORBIT_MS) * Math.PI * 2;
 
-        // Domates ve soğan karşılıklı fazlarda döner; hafif dikey elips (derinlik hissi)
+        // Domates ve soğan karşılıklı fazlarda döner; dikey elips + derinlik
+        var tSin = Math.sin(angle + Math.PI);
+        var oSin = Math.sin(angle);
         var tX = centerX + Math.cos(angle + Math.PI) * ORBIT_RADIUS - CHARACTER_SIZE / 2;
-        var tY = MEET_Y + Math.sin(angle + Math.PI) * (ORBIT_RADIUS * 0.35);
+        var tY = MEET_Y + tSin * (ORBIT_RADIUS * 0.35);
         var oX = centerX + Math.cos(angle) * ORBIT_RADIUS - CHARACTER_SIZE / 2;
-        var oY = MEET_Y + Math.sin(angle) * (ORBIT_RADIUS * 0.35);
+        var oY = MEET_Y + oSin * (ORBIT_RADIUS * 0.35);
 
         tomatoX.setValue(tX);
         tomatoY.setValue(tY);
         onionX.setValue(oX);
         onionY.setValue(oY);
+
+        // Derinlik ölçeği: sin=+1 önde (1.0), sin=-1 arkada (0.86)
+        tomatoScale.setValue(0.93 + tSin * 0.07);
+        onionScale.setValue(0.93 + oSin * 0.07);
+
+        // Önde olan üstte çizilsin (yer değiştirdikçe dönüş hissi doğar)
+        var nowFront = tSin > oSin ? 'tomato' : 'onion';
+        if (nowFront !== lastFront) {
+          lastFront = nowFront;
+          setFront(nowFront);
+        }
 
         frameId = requestAnimationFrame(update);
       };
@@ -155,10 +178,12 @@ export default function DateNightDance() {
           position: 'absolute',
           width: CHARACTER_SIZE,
           height: CHARACTER_SIZE,
+          zIndex: front === 'tomato' ? 2 : 1,
           transform: [
             { translateX: tomatoX },
             { translateY: tomatoY },
             { translateY: tomatoBounce },
+            { scale: tomatoScale },
             { scaleX: -1 },
           ],
         }}
@@ -172,10 +197,12 @@ export default function DateNightDance() {
           position: 'absolute',
           width: CHARACTER_SIZE,
           height: CHARACTER_SIZE,
+          zIndex: front === 'onion' ? 2 : 1,
           transform: [
             { translateX: onionX },
             { translateY: onionY },
             { translateY: onionBounce },
+            { scale: onionScale },
           ],
         }}
       >
