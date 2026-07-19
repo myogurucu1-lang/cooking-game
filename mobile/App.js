@@ -14,6 +14,7 @@ import CookScreen from './screens/CookScreen';
 import ChallengerScreen from './screens/ChallengerScreen';
 import ResultScreen from './screens/ResultScreen';
 import HistoryScreen from './screens/HistoryScreen';
+import PackStoreScreen from './screens/PackStoreScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -129,6 +130,7 @@ export default function App() {
           <Stack.Screen name="Challenger" component={ChallengerScreen} />
           <Stack.Screen name="Result" component={ResultScreen} />
           <Stack.Screen name="History" component={HistoryScreen} />
+          <Stack.Screen name="PackStore" component={PackStoreScreen} options={{ presentation: 'modal' }} />
         </Stack.Navigator>
       </NavigationContainer>
       </LanguageProvider>

@@ -68,6 +68,13 @@ export default function DrawerMenu(props) {
     }, 250);
   };
 
+  var goToPacks = function () {
+    onClose();
+    setTimeout(function () {
+      onNavigate('PackStore');
+    }, 250);
+  };
+
   return (
     <View style={styles.container}>
       <TouchableWithoutFeedback onPress={onClose}>
@@ -103,6 +110,18 @@ export default function DrawerMenu(props) {
               <Ionicons name="book-outline" size={20} color="#FF6B35" />
             </View>
             <Text style={styles.menuLabel}>{t('drawer.history')}</Text>
+            <Ionicons name="chevron-forward" size={18} color="#C0B0A0" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={goToPacks}
+            activeOpacity={0.7}
+          >
+            <View style={styles.menuIconBg}>
+              <Ionicons name="gift-outline" size={20} color="#8B2E44" />
+            </View>
+            <Text style={styles.menuLabel}>{t('drawer.packs')}</Text>
             <Ionicons name="chevron-forward" size={18} color="#C0B0A0" />
           </TouchableOpacity>
 

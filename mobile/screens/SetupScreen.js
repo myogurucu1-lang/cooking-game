@@ -180,6 +180,7 @@ function PulseVS(props) {
 
 export default function SetupScreen(props) {
   var navigation = props.navigation;
+  var route = props.route;
   var insets = useSafeAreaInsets();
   var t = useLang().t;
 
@@ -212,6 +213,14 @@ export default function SetupScreen(props) {
     }
     setPack(newPack);
   };
+
+  // Paket sayfasındaki "Date Night Oyna" butonundan gelindiyse modu ön seç
+  useEffect(function () {
+    var pre = route && route.params && route.params.preselectPack;
+    if (pre === 'datenight' && DATENIGHT_UNLOCKED) {
+      setPack('datenight');
+    }
+  }, [route && route.params && route.params.preselectPack]);
 
   var drawerState = useState(false);
   var drawerVisible = drawerState[0];
@@ -285,25 +294,60 @@ export default function SetupScreen(props) {
               <Text style={[styles.tagline, isDn && styles.taglineDn]}>{t(isDn ? 'setup.taglineDn' : 'setup.tagline')}</Text>
             </Animated.View>
 
-            {/* Paket seçici */}
-            <View style={styles.packRow}>
+            {/* Mod Rafı: yatay kaydırılabilir mod kartları */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelfRow}>
+              {/* Klasik */}
               <TouchableOpacity
-                style={[styles.packChip, !isDn && styles.packChipActive]}
+                style={[styles.shelfCard, !isDn && styles.shelfCardActive]}
                 onPress={function () { selectPack('classic'); }}
                 activeOpacity={0.85}
               >
-                <Ionicons name="restaurant" size={14} color={!isDn ? '#FFFFFF' : '#8A7069'} />
-                <Text style={[styles.packChipText, !isDn && styles.packChipTextActive]}>{t('pack.classic')}</Text>
+                <Image source={require('../assets/cook.png')} style={styles.shelfImg} resizeMode="contain" />
+                <Text style={[styles.shelfName, isDn && styles.shelfNameDim]}>{t('pack.classic')}</Text>
+                <View style={[styles.shelfBadge, { backgroundColor: 'rgba(78,205,196,0.18)' }]}>
+                  <Text style={[styles.shelfBadgeText, { color: '#2E9A92' }]}>{t('pack.free')}</Text>
+                </View>
               </TouchableOpacity>
+
+              {/* Date Night */}
               <TouchableOpacity
-                style={[styles.packChip, isDn && styles.packChipActiveDn]}
-                onPress={function () { selectPack('datenight'); }}
+                style={[styles.shelfCard, isDn && styles.shelfCardActiveDn]}
+                onPress={function () {
+                  if (DATENIGHT_UNLOCKED) { selectPack('datenight'); }
+                  else { navigation.navigate('PackStore'); }
+                }}
                 activeOpacity={0.85}
               >
-                <Ionicons name={DATENIGHT_UNLOCKED ? 'heart' : 'lock-closed'} size={14} color={isDn ? '#FFFFFF' : '#8A7069'} />
-                <Text style={[styles.packChipText, isDn && styles.packChipTextActive]}>{t('pack.datenight')}</Text>
+                <Image source={require('../assets/datenight/cook.png')} style={styles.shelfImg} resizeMode="contain" />
+                <Text style={[styles.shelfName, isDn && { color: '#F0DAD0' }]}>{t('pack.datenight')}</Text>
+                {DATENIGHT_UNLOCKED ? (
+                  <View style={[styles.shelfBadge, { backgroundColor: 'rgba(111,168,139,0.2)' }]}>
+                    <Ionicons name="checkmark" size={10} color="#4E8A6C" />
+                    <Text style={[styles.shelfBadgeText, { color: '#4E8A6C' }]}>{t('pack.owned')}</Text>
+                  </View>
+                ) : (
+                  <View style={[styles.shelfBadge, { backgroundColor: 'rgba(139,46,68,0.16)' }]}>
+                    <Ionicons name="lock-closed" size={10} color="#8B2E44" />
+                    <Text style={[styles.shelfBadgeText, { color: '#8B2E44' }]}>{t('pack.dnPrice')}</Text>
+                  </View>
+                )}
               </TouchableOpacity>
-            </View>
+
+              {/* Party — Yakında */}
+              <TouchableOpacity
+                style={[styles.shelfCard, styles.shelfCardSoon]}
+                onPress={function () {
+                  Alert.alert(t('store.partyTitle'), t('pack.partySoonMsg'), [{ text: t('pack.lockedOk') }]);
+                }}
+                activeOpacity={0.85}
+              >
+                <Image source={require('../assets/challenger.png')} style={[styles.shelfImg, { opacity: 0.45 }]} resizeMode="contain" />
+                <Text style={[styles.shelfName, { opacity: 0.6 }, isDn && styles.shelfNameDim]}>{t('pack.party')}</Text>
+                <View style={[styles.shelfBadge, { backgroundColor: 'rgba(212,168,87,0.2)' }]}>
+                  <Text style={[styles.shelfBadgeText, { color: '#A8843D' }]}>{t('pack.soon')}</Text>
+                </View>
+              </TouchableOpacity>
+            </ScrollView>
 
             <View style={styles.cardsRow}>
               <CharacterCard image={isDn ? require('../assets/datenight/cook.png') : require('../assets/cook.png')} label="COOK" name={cookName} onChangeName={setCookName} animDelay={200} accentColor={isDn ? DN.gold : '#4ECDC4'} />
@@ -460,6 +504,23 @@ var styles = StyleSheet.create({
   packChipActiveDn: { backgroundColor: '#8B2E44', borderColor: '#E8B4A0' },
   packChipText: { fontSize: 13, fontWeight: '800', color: '#8A7069' },
   packChipTextActive: { color: '#FFFFFF' },
+
+  // Mod Rafı
+  shelfRow: { gap: 10, paddingHorizontal: 4, paddingVertical: 4, marginBottom: 14 },
+  shelfCard: {
+    width: 108, alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(255,252,248,0.9)', borderRadius: 16,
+    borderWidth: 1.5, borderColor: 'rgba(140,110,90,0.2)',
+    paddingVertical: 12, paddingHorizontal: 8,
+  },
+  shelfCardActive: { borderColor: '#FF6B35', backgroundColor: '#FFF4EC' },
+  shelfCardActiveDn: { borderColor: '#E8B4A0', backgroundColor: 'rgba(58,20,32,0.88)' },
+  shelfCardSoon: { opacity: 0.85 },
+  shelfImg: { width: 52, height: 52 },
+  shelfName: { fontSize: 12.5, fontWeight: '800', color: '#5D3A1A' },
+  shelfNameDim: { color: '#C2A69E' },
+  shelfBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
+  shelfBadgeText: { fontSize: 10, fontWeight: '800' },
   cardsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
   cardWrapper: { flex: 1 },
   card: { borderRadius: 22, paddingTop: 0, paddingBottom: 16, paddingHorizontal: 12, alignItems: 'center', overflow: 'hidden', backgroundColor: 'rgba(255,252,248,0.82)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.7)', shadowColor: '#8B6914', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 6 },

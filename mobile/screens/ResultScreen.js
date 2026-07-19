@@ -550,6 +550,26 @@ export default function ResultScreen(props) {
           </View>
         </View>
 
+        {!isDn ? (
+          // Klasik oyun bittiğinde Date Night tanıtım kartı (mutlu an upsell'i)
+          <TouchableOpacity
+            style={styles.upsellCard}
+            onPress={function () { navigation.navigate('PackStore'); }}
+            activeOpacity={0.9}
+          >
+            <LinearGradient colors={['#8B2E44', '#3A1420']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.upsellGradient}>
+              <View style={styles.upsellIconBg}>
+                <Ionicons name="heart" size={20} color="#E8B4A0" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.upsellTitle}>{t('res.upsellTitle')}</Text>
+                <Text style={styles.upsellSub}>{t('res.upsellSub')}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="rgba(232,180,160,0.7)" />
+            </LinearGradient>
+          </TouchableOpacity>
+        ) : null}
+
         <View style={styles.buttonsContainer}>
           <View style={styles.savedBadge}>
             <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
@@ -572,6 +592,14 @@ export default function ResultScreen(props) {
 
 var styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+  upsellCard: { marginHorizontal: 16, marginTop: 4, marginBottom: 8, borderRadius: 16, overflow: 'hidden', ...SHADOW },
+  upsellGradient: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
+  upsellIconBg: {
+    width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(232,180,160,0.18)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  upsellTitle: { fontSize: 14.5, fontWeight: '800', color: '#FBEEE8' },
+  upsellSub: { fontSize: 12, color: '#E8B4A0', marginTop: 2 },
   confettiContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10 },
   scrollView: { flex: 1 },
   scrollContent: { paddingBottom: 20 },
